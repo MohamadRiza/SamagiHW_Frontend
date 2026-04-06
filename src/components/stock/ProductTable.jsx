@@ -130,7 +130,7 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
                     <td className="px-4 py-3 text-sm">
                       <div>
                         <p className="text-gray-900">Sell: <strong>LKR {product.selling_price.toFixed(2)}</strong></p>
-                        <p className="text-xs text-gray-500">Buy: LKR {product.buying_price.toFixed(2)}</p>
+                        <p className="text-xs text-gray-500">Cost: LKR {product.buying_price.toFixed(2)}</p>
                         <p className="text-xs font-medium text-primary-700">Final: LKR {finalPrice.toFixed(2)}</p>
                       </div>
                     </td>

@@ -85,7 +85,7 @@ const ProductForm = ({ product, onSubmit, onCancel, loading }) => {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Buying Price (LKR) <span className="text-red-500">*</span>
+             Cost (LKR) <span className="text-red-500">*</span>
           </label>
           <input
             type="number"
