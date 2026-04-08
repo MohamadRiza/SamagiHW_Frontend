@@ -80,50 +80,202 @@ const StockManagement = () => {
     }
   };
   
-  // Handle Print Barcode
+  // ✅ PERFECT BARCODE PRINT: Samagi Hardware Label Layout (FIXED ALIGNMENTS)
   const handlePrintBarcode = (product) => {
-    // Trigger print via the BarcodeGenerator component
-    const printWindow = window.open('', '_blank');
+    // Calculate final price with discount logic
+    const finalPrice = product.discount_type === 'percent'
+      ? product.selling_price - (product.selling_price * product.discount_value / 100)
+      : product.selling_price - product.discount_value;
+    
+    // Generate crisp barcode image using canvas
+    const barcodeImage = generateBarcodeCanvas(product.barcode);
+    
+    // Format price with LKR and comma separators
+    const formattedPrice = new Intl.NumberFormat('en-LK', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(finalPrice);
+    
+    // Short form fallback to item name first 10 chars
+    const displayShortForm = product.short_form || product.item_name?.substring(0, 10) || '';
+    
+    const printWindow = window.open('', '_blank', 'width=400,height=300');
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
-      <head><title>Print Barcode</title>
-      <style>
-        body{font-family:monospace;text-align:center;padding:20px}
-        .barcode{display:inline-block;margin:20px 0}
-        .bar{display:inline-block;background:#000;height:50px;margin-right:1px}
-        .barcode-text{font-size:14px;font-weight:bold;margin-top:5px}
-        .item-name{font-size:12px;color:#666;margin-bottom:10px}
-        @media print{body{padding:0}}
-      </style></head>
+      <head>
+        <title>Barcode - ${product.barcode}</title>
+        <style>
+          @page { size: 3.5in 2in; margin: 0; }
+          * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0; 
+            -webkit-print-color-adjust: exact; 
+            print-color-adjust: exact; 
+          }
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            width: 3.5in;
+            height: 2in;
+            padding: 0.1in 0.15in;
+            background: #fff;
+            color: #000;
+          }
+          .label-container {
+            border: 1px solid #ddd;
+            padding: 10px 8px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+          }
+          .company-name {
+            text-align: center;
+            font-weight: 700;
+            font-size: 12px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            padding-bottom: 4px;
+            border-bottom: 1px dashed #999;
+            width: 100%;
+          }
+          .barcode-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 4px 0;
+            width: 100%;
+          }
+          .barcode-image {
+            width: 160px;
+            height: 45px;
+            object-fit: contain;
+            image-rendering: pixelated;
+            margin-bottom: 2px;
+          }
+          .barcode-number {
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: 700;
+            font-size: 11px;
+            letter-spacing: 3px;
+            text-align: center;
+            margin-top: 2px;
+          }
+          .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid #ddd;
+          }
+          .short-form {
+            font-size: 10px;
+            font-weight: 700;
+            color: #333;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: left;
+          }
+          .price {
+            font-size: 11px;
+            font-weight: 700;
+            color: #000;
+            text-align: right;
+          }
+          .price .currency {
+            font-size: 9px;
+            vertical-align: super;
+            margin-right: 1px;
+          }
+          @media print {
+            body { 
+              -webkit-print-color-adjust: exact; 
+              print-color-adjust: exact;
+              padding: 0.1in 0.15in !important;
+            }
+            .label-container {
+              border: 1px solid #000;
+            }
+          }
+        </style>
+      </head>
       <body>
-        <div class="item-name">${product.item_name}</div>
-        <div class="barcode">
-          ${generateBars(product.barcode).map(bar => 
-            `<div class="bar" style="width:${bar.width}px;margin-right:${bar.spacing}px"></div>`
-          ).join('')}
+        <div class="label-container">
+          <!-- Company Name (Top Center) -->
+          <div class="company-name">Samagi Hardware</div>
+          
+          <!-- Barcode Section (Perfectly Centered) -->
+          <div class="barcode-wrapper">
+            <img src="${barcodeImage}" alt="barcode" class="barcode-image" />
+            <div class="barcode-number">${product.barcode}</div>
+          </div>
+          
+          <!-- Bottom Row: Short Form (Left) | Price (Right) -->
+          <div class="info-row">
+            <div class="short-form">${displayShortForm}</div>
+            <div class="price">
+              <span class="currency">LKR</span>${formattedPrice}
+            </div>
+          </div>
         </div>
-        <div class="barcode-text">${product.barcode}</div>
-        <script>window.onload=()=>{window.print();window.close();}<\/script>
+        
+        <script>
+          window.onload = function() {
+            setTimeout(() => {
+              window.print();
+            }, 300);
+          };
+        <\/script>
       </body>
       </html>
     `);
     printWindow.document.close();
   };
   
-  // Helper: Generate barcode bars (same as BarcodeGenerator)
-  const generateBars = (code) => {
-    const bars = [];
+  // ✅ Helper: Generate crisp barcode canvas image (Code128 style) - CENTERED
+  const generateBarcodeCanvas = (code, width = 180, height = 45) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    canvas.width = width;
+    canvas.height = height;
+    
+    // White background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    
+    // Generate deterministic bars from barcode string for consistency
     let hash = 0;
     for (let i = 0; i < code.length; i++) {
       hash = code.charCodeAt(i) + ((hash << 5) - hash);
     }
+    
+    // Calculate starting position to center bars
+    let totalWidth = 0;
+    const bars = [];
     for (let i = 0; i < 30; i++) {
-      const width = ((hash >> i) & 3) + 1;
-      const spacing = ((hash >> (i + 5)) & 1) ? 2 : 1;
-      bars.push({ width, spacing, key: i });
+      const barWidth = ((hash >> i) & 3) + 1; // 1-4px
+      const spacing = ((hash >> (i + 5)) & 1) ? 2 : 1; // 1-2px
+      bars.push({ width: barWidth, spacing });
+      totalWidth += barWidth + spacing;
     }
-    return bars;
+    
+    // Center the barcode
+    let x = (width - totalWidth) / 2;
+    
+    // Draw barcode bars
+    ctx.fillStyle = '#000000';
+    for (const bar of bars) {
+      ctx.fillRect(x, 3, bar.width, height - 8);
+      x += bar.width + bar.spacing;
+    }
+    
+    return canvas.toDataURL('image/png');
   };
   
   // Admin-only: Show add button
