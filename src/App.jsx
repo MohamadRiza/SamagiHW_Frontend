@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Unauthorized from './pages/Unauthorized';
 import StockManagement from './pages/StockManagement';
+import CashBilling from './pages/CashBilling';
 
 function App() {
   return (
@@ -24,6 +25,10 @@ function App() {
               </ProtectedRoute>
             } 
           />
+
+          <Route path='/billing/cash' element={<ProtectedRoute roles={['admin', 'staff']}>
+            <CashBilling/>
+          </ProtectedRoute>}/>
 
           <Route path='/stock' element={<ProtectedRoute roles={['admin', 'staff']}>
             <StockManagement/>
