@@ -166,20 +166,85 @@ const CreditBillService = {
     }
   },
 
-  // ✅ Reprint bill receipt
-  reprintBill: async (billId) => {
-    try {
-      if (!billId) return { success: false, data: null, error: 'Bill ID required' };
-      const response = await api.get(`/credit-bills/${billId}/reprint`);
-      return {
-        success: response.data?.success || false,
-        data: response.data?.data || null,
-        error: response.data?.error || null
-      };
-    } catch (error) {
-      return { success: false, data: null, error: error.message || 'Failed to fetch bill' };
-    }
+// ✅ Reprint bill receipt
+reprintBill: async (billId) => {
+  try {
+    if (!billId) return { success: false, data: null, error: 'Bill ID required' };
+    const response = await api.get(`/credit-bills/${billId}/reprint`);
+    return {
+      success: response.data?.success || false,
+      data: response.data?.data || null,
+      error: response.data?.error || null
+    };
+  } catch (error) {
+    return { success: false, data: null, error: error.message || 'Failed to fetch bill' };
   }
+},
+
+// ✅ Get paid bills with filters
+getPaid: async (filters = {}) => {
+  try {
+    const params = new URLSearchParams();
+    
+    // Search: only append if non-empty
+    if (filters.search && filters.search.trim().length >= 2) {
+      params.append('search', filters.search.trim());
+    }
+    
+    // Customer ID: only append if valid number
+    if (filters.customerId && !isNaN(parseInt(filters.customerId))) {
+      params.append('customerId', parseInt(filters.customerId).toString());
+    }
+    
+    // Date filters: only append if valid ISO date format
+    if (filters.dateFrom && /^\d{4}-\d{2}-\d{2}$/.test(filters.dateFrom)) {
+      params.append('dateFrom', filters.dateFrom);
+    }
+    if (filters.dateTo && /^\d{4}-\d{2}-\d{2}$/.test(filters.dateTo)) {
+      params.append('dateTo', filters.dateTo);
+    }
+    
+    // SortBy: whitelist validation
+    const validSorts = ['created_at', 'due_date', 'grand_total', 'customer_name', 'bill_number'];
+    if (filters.sortBy && validSorts.includes(filters.sortBy)) {
+      params.append('sortBy', filters.sortBy);
+    }
+    
+    // Order: ASC or DESC
+    if (filters.order && ['ASC', 'DESC'].includes(filters.order.toUpperCase())) {
+      params.append('order', filters.order.toUpperCase());
+    }
+    
+    // Limit: valid positive number
+    if (filters.limit && !isNaN(parseInt(filters.limit))) {
+      const limit = parseInt(filters.limit);
+      if (limit > 0 && limit <= 1000) {
+        params.append('limit', limit.toString());
+      }
+    }
+    
+    const queryString = params.toString();
+    const url = `/credit-bills/paid${queryString ? '?' + queryString : ''}`;
+    
+    const response = await api.get(url);
+    
+    return {
+      success: response.data?.success || false,
+      data: Array.isArray(response.data?.data) ? response.data.data : [],
+      stats: response.data?.stats || null,
+      error: response.data?.error || null
+    };
+  } catch (error) {
+    console.error('Get paid bills service error:', error);
+    return {
+      success: false,
+      data: [],
+      stats: null,
+      error: error.response?.data?.error || error.message || 'Network error',
+      statusCode: error.response?.status
+    };
+  }
+},
 };
 
 export default CreditBillService;

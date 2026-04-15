@@ -8,6 +8,7 @@ import StockManagement from "./pages/StockManagement";
 import CashBilling from "./pages/CashBilling";
 import CreditBilling from "./pages/CreditBilling";
 import PendingBills from "./pages/PendingBills";
+import PaidBills from "./pages/PaidBills";
 
 function App() {
   return (
@@ -61,6 +62,15 @@ function App() {
   element={
     <ProtectedRoute roles={['admin', 'staff']}>
       <PendingBills />
+    </ProtectedRoute>
+  } 
+/>
+
+<Route 
+  path="/customers/paid" 
+  element={
+    <ProtectedRoute roles={['admin', 'staff']}>
+      <PaidBills />
     </ProtectedRoute>
   } 
 />
