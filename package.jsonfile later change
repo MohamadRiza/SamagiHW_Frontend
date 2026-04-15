@@ -11,3 +11,46 @@
     "concurrently": "^8.2.0"
   }
 } also do this in terminal:{npm install -D concurrently}
+
+Company billing
+Company name date option
+Cash bill and credit bill separate 
+Pdf jpg borth work
+
+
+Stock 
+Bar code add
+Name add
+Short foam add
+Edit barcode delete view and update
+Old stock should be there same as but new stock also appears in there
+
+Bill copy
+Item name
+Nos
+Price
+Discount 
+
+Loan 
+Billing area i need a button option credit bills and cash bills Pop up column come when click credit bill button i need to put customer name and his code
+In customer credit bill area i can edit bills
+And need a tick mark for paying bills and after i tick a bill it should go to a another table or page  named paid customer bills
+
+Today full details
+Amount
+Expenses 
+Profit
+Input amount
+Output amount
+Balance
+Balance should be next day
+
+Check details
+Date 
+Company name
+Amount
+Reminder for dashboard before one day
+
+Expenses 
+Two text boxes for reason and amount
+Date and time should generate automatically  for all tabs

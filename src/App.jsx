@@ -7,6 +7,7 @@ import Unauthorized from "./pages/Unauthorized";
 import StockManagement from "./pages/StockManagement";
 import CashBilling from "./pages/CashBilling";
 import CreditBilling from "./pages/CreditBilling";
+import PendingBills from "./pages/PendingBills";
 
 function App() {
   return (
@@ -54,6 +55,15 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route 
+  path="/customers/pending" 
+  element={
+    <ProtectedRoute roles={['admin', 'staff']}>
+      <PendingBills />
+    </ProtectedRoute>
+  } 
+/>
 
           <Route
             path="billing/credit"
