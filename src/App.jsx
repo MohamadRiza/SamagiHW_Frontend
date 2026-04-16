@@ -9,6 +9,7 @@ import CashBilling from "./pages/CashBilling";
 import CreditBilling from "./pages/CreditBilling";
 import PendingBills from "./pages/PendingBills";
 import PaidBills from "./pages/PaidBills";
+import CustomerList from "./pages/CustomerList";
 
 function App() {
   return (
@@ -25,6 +26,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="customers/list"
+            element={
+              <ProtectedRoute roles={["admin", "staff"]}>
+                <CustomerList />
               </ProtectedRoute>
             }
           />
@@ -57,23 +67,23 @@ function App() {
             }
           />
 
-          <Route 
-  path="/customers/pending" 
-  element={
-    <ProtectedRoute roles={['admin', 'staff']}>
-      <PendingBills />
-    </ProtectedRoute>
-  } 
-/>
+          <Route
+            path="/customers/pending"
+            element={
+              <ProtectedRoute roles={["admin", "staff"]}>
+                <PendingBills />
+              </ProtectedRoute>
+            }
+          />
 
-<Route 
-  path="/customers/paid" 
-  element={
-    <ProtectedRoute roles={['admin', 'staff']}>
-      <PaidBills />
-    </ProtectedRoute>
-  } 
-/>
+          <Route
+            path="/customers/paid"
+            element={
+              <ProtectedRoute roles={["admin", "staff"]}>
+                <PaidBills />
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="billing/credit"
@@ -86,7 +96,7 @@ function App() {
 
           {/* Default Redirect */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<div>404 - Page Not Found</div>} /> 
+          <Route path="*" element={<div>404 - Page Not Found</div>} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

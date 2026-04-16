@@ -149,7 +149,94 @@ const CustomerService = {
     } catch (error) {
       return handleError(error, 'Failed to fetch customer');
     }
+  },
+
+  // ✅ Get credit customers with full stats
+getCreditCustomers: async (filters = {}) => {
+  try {
+    const params = new URLSearchParams();
+    
+    // Search: only append if non-empty
+    if (filters.search && filters.search.trim().length >= 2) {
+      params.append('search', filters.search.trim());
+    }
+    
+    // Outstanding range: only append if valid numbers
+    if (filters.minOutstanding !== undefined && !isNaN(parseFloat(filters.minOutstanding))) {
+      params.append('minOutstanding', parseFloat(filters.minOutstanding).toString());
+    }
+    if (filters.maxOutstanding !== undefined && !isNaN(parseFloat(filters.maxOutstanding))) {
+      params.append('maxOutstanding', parseFloat(filters.maxOutstanding).toString());
+    }
+    
+    // Min bills: only append if valid number
+    if (filters.minBills !== undefined && !isNaN(parseInt(filters.minBills))) {
+      params.append('minBills', parseInt(filters.minBills).toString());
+    }
+    
+    // SortBy: whitelist validation
+    const validSorts = ['name', 'company_name', 'mobile', 'city', 'total_outstanding', 'total_bills', 'pending_bills', 'last_bill_date'];
+    if (filters.sortBy && validSorts.includes(filters.sortBy)) {
+      params.append('sortBy', filters.sortBy);
+    }
+    
+    // Order: ASC or DESC
+    if (filters.order && ['ASC', 'DESC'].includes(filters.order.toUpperCase())) {
+      params.append('order', filters.order.toUpperCase());
+    }
+    
+    // Limit: valid positive number
+    if (filters.limit && !isNaN(parseInt(filters.limit))) {
+      const limit = parseInt(filters.limit);
+      if (limit > 0 && limit <= 1000) {
+        params.append('limit', limit.toString());
+      }
+    }
+    
+    const queryString = params.toString();
+    const url = `/customers/credit${queryString ? '?' + queryString : ''}`;
+    
+    const response = await api.get(url);
+    
+    return {
+      success: response.data?.success || false,
+      data: Array.isArray(response.data?.data) ? response.data.data : [],
+      error: response.data?.error || null
+    };
+  } catch (error) {
+    console.error('Get credit customers service error:', error);
+    return {
+      success: false,
+      data: [],
+      error: error.response?.data?.error || error.message || 'Network error',
+      statusCode: error.response?.status
+    };
   }
+},
+
+// ✅ Get single customer with full stats and bill history
+getCustomerWithStats: async (customerId) => {
+  try {
+    if (!customerId) {
+      return { success: false, data: null, error: 'Customer ID required' };
+    }
+    
+    const response = await api.get(`/customers/${customerId}/stats`);
+    
+    return {
+      success: response.data?.success || false,
+      data: response.data?.data || null,
+      error: response.data?.error || null
+    };
+  } catch (error) {
+    console.error('Get customer with stats service error:', error);
+    return {
+      success: false,
+      data: null,
+      error: error.response?.data?.error || error.message || 'Failed to fetch customer details'
+    };
+  }
+},
 };
 
 export default CustomerService;
