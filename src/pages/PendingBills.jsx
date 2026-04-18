@@ -16,10 +16,13 @@ const PendingBills = () => {
   // Filters
   const [filters, setFilters] = useState({
     search: '',
-    status: 'all', // 'all', 'pending', 'partial'
+    status: 'all',
     sortBy: 'due_date',
     order: 'ASC'
   });
+  
+  // Folder structure: expanded customer IDs
+  const [expandedCustomers, setExpandedCustomers] = useState({});
   
   // Payment modal
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -28,12 +31,12 @@ const PendingBills = () => {
   const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [paymentNotes, setPaymentNotes] = useState('');
   
-  // Customer search
+  // Customer search for filter
   const [customerSearch, setCustomerSearch] = useState('');
   const [customerSuggestions, setCustomerSuggestions] = useState([]);
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
 
-  // Fetch pending bills
+  // Fetch pending bills on mount and when filters change
   useEffect(() => {
     fetchPendingBills();
   }, [filters]);
@@ -78,6 +81,88 @@ const PendingBills = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // ✅ Group bills by customer for folder structure
+  const billsByCustomer = useMemo(() => {
+    if (!Array.isArray(pendingBills)) return {};
+    
+    return pendingBills.reduce((acc, bill) => {
+      const customerId = bill.customer_id;
+      const customerKey = `${customerId}_${bill.customer_name || 'Unknown'}`;
+      
+      if (!acc[customerKey]) {
+        acc[customerKey] = {
+          id: customerId,
+          name: bill.customer_name || 'Unknown',
+          company_name: bill.company_name,
+          mobile: bill.mobile,
+          city: bill.city,
+          address: bill.address,
+          bills: []
+        };
+      }
+      acc[customerKey].bills.push(bill);
+      return acc;
+    }, {});
+  }, [pendingBills]);
+
+  // ✅ Get sorted/filtered customer list
+  const customerList = useMemo(() => {
+    let customers = Object.values(billsByCustomer);
+    
+    // Filter by search (customer name, company, mobile, city)
+    if (filters.search && filters.search.length >= 2) {
+      const term = filters.search.toLowerCase();
+      customers = customers.filter(customer => 
+        customer.name?.toLowerCase().includes(term) ||
+        customer.company_name?.toLowerCase().includes(term) ||
+        customer.mobile?.includes(term) ||
+        customer.city?.toLowerCase().includes(term)
+      );
+    }
+    
+    // Sort customers
+    const order = filters.order === 'ASC' ? 1 : -1;
+    customers.sort((a, b) => {
+      const key = filters.sortBy === 'customer_name' ? 'name' : 
+                 filters.sortBy === 'outstanding_amount' ? 'total_outstanding' : 'name';
+      
+      const aVal = key === 'total_outstanding' 
+        ? a.bills.reduce((sum, b) => sum + (b.outstanding_amount || 0), 0)
+        : a[key] || '';
+      const bVal = key === 'total_outstanding'
+        ? b.bills.reduce((sum, b) => sum + (b.outstanding_amount || 0), 0)
+        : b[key] || '';
+      
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        return aVal.localeCompare(bVal) * order;
+      }
+      return (aVal - bVal) * order;
+    });
+    
+    return customers;
+  }, [billsByCustomer, filters]);
+
+  // Toggle customer folder expand/collapse
+  const toggleCustomer = (customerKey) => {
+    setExpandedCustomers(prev => ({
+      ...prev,
+      [customerKey]: !prev[customerKey]
+    }));
+  };
+
+  // Expand/collapse all
+  const expandAll = () => {
+    const allExpanded = {};
+    Object.keys(billsByCustomer).forEach(key => {
+      allExpanded[key] = true;
+    });
+    setExpandedCustomers(allExpanded);
+  };
+  
+  const collapseAll = () => {
+    setExpandedCustomers({});
   };
 
   const formatLKR = (amount) => `LKR ${(amount || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
@@ -270,22 +355,7 @@ const PendingBills = () => {
     printWindow.document.close();
   };
 
-  const filteredBills = useMemo(() => {
-    let result = Array.isArray(pendingBills) ? [...pendingBills] : [];
-    if (filters.search && filters.search.length >= 2) {
-      const term = filters.search.toLowerCase();
-      result = result.filter(bill => 
-        bill.customer_name?.toLowerCase().includes(term) ||
-        bill.company_name?.toLowerCase().includes(term) ||
-        bill.mobile?.includes(term) ||
-        bill.address?.toLowerCase().includes(term) ||
-        bill.city?.toLowerCase().includes(term) ||
-        bill.bill_number?.toLowerCase().includes(term)
-      );
-    }
-    return result;
-  }, [pendingBills, filters.search]);
-
+  // Stats calculation (aggregate across all bills)
   const stats = useMemo(() => {
     const bills = Array.isArray(pendingBills) ? pendingBills : [];
     const total = bills.reduce((sum, b) => sum + (b.outstanding_amount || 0), 0);
@@ -304,10 +374,10 @@ const PendingBills = () => {
         <header className="bg-white shadow-sm border-b px-6 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white text-xl shadow-lg">📋</div>
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white text-xl shadow-lg">📁</div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Pending Bills</h1>
-                <p className="text-sm text-gray-500">Manage unpaid credit bills & payments</p>
+                <p className="text-sm text-gray-500">Manage unpaid credit bills by customer</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -321,7 +391,7 @@ const PendingBills = () => {
                 </div>
               </div>
               <div className="px-4 py-2 bg-amber-100 border border-amber-200 rounded-xl">
-                <span className="text-sm font-bold text-amber-700">{stats.count} Pending</span>
+                <span className="text-sm font-bold text-amber-700">{stats.count} Bills</span>
               </div>
             </div>
           </div>
@@ -348,21 +418,24 @@ const PendingBills = () => {
           </div>
         </div>
         
-        {/* Filters */}
+        {/* Filters & Folder Controls */}
         <div className="bg-white border-b px-6 py-4">
           <div className="flex flex-col lg:flex-row gap-4">
+            {/* Search */}
             <div className="flex-1 relative">
               <input
                 type="text"
                 value={filters.search}
                 onChange={(e) => setFilters({...filters, search: e.target.value})}
-                placeholder="🔍 Search by customer name, mobile, company, address, or bill #..."
+                placeholder="🔍 Search customers or bills..."
                 className="input-pos pl-10"
               />
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
+            
+            {/* Status Filter */}
             <select
               value={filters.status}
               onChange={(e) => setFilters({...filters, status: e.target.value})}
@@ -372,16 +445,18 @@ const PendingBills = () => {
               <option value="pending">Pending Only</option>
               <option value="partial">Partial Payments</option>
             </select>
+            
+            {/* Sort */}
             <div className="flex gap-2">
               <select
                 value={filters.sortBy}
                 onChange={(e) => setFilters({...filters, sortBy: e.target.value})}
                 className="input-pos w-40"
               >
+                <option value="customer_name">Sort by Customer</option>
                 <option value="due_date">Sort by Due Date</option>
                 <option value="created_at">Sort by Date</option>
                 <option value="outstanding_amount">Sort by Amount</option>
-                <option value="customer_name">Sort by Customer</option>
               </select>
               <button
                 onClick={() => setFilters({...filters, order: filters.order === 'ASC' ? 'DESC' : 'ASC'})}
@@ -391,6 +466,26 @@ const PendingBills = () => {
                 {filters.order === 'ASC' ? '↑' : '↓'}
               </button>
             </div>
+            
+            {/* Folder Controls */}
+            <div className="flex gap-2">
+              <button
+                onClick={expandAll}
+                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-200 text-sm transition-colors"
+                title="Expand all customers"
+              >
+                📂 Expand All
+              </button>
+              <button
+                onClick={collapseAll}
+                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-200 text-sm transition-colors"
+                title="Collapse all customers"
+              >
+                📁 Collapse All
+              </button>
+            </div>
+            
+            {/* Refresh */}
             <button
               onClick={fetchPendingBills}
               disabled={loading}
@@ -407,7 +502,7 @@ const PendingBills = () => {
           </div>
         </div>
         
-        {/* Bills Table */}
+        {/* Folder View - Customer → Bills */}
         <div className="flex-1 overflow-auto p-6">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-64 text-gray-400">
@@ -417,101 +512,199 @@ const PendingBills = () => {
               </svg>
               <p>Loading pending bills...</p>
             </div>
-          ) : !Array.isArray(filteredBills) || filteredBills.length === 0 ? (
+          ) : customerList.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-              <div className="text-6xl mb-4 opacity-30">📋</div>
+              <div className="text-6xl mb-4 opacity-30">📁</div>
               <p className="text-lg font-semibold">No pending bills found</p>
               <p className="text-sm mt-1">All credit bills are paid or adjust filters</p>
             </div>
           ) : (
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Bill #</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Customer</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Date / Due</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Amount</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Outstanding</th>
-                    <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Status</th>
-                    <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {filteredBills.map((bill) => {
-                    const overdue = isOverdue(bill);
-                    return (
-                      <tr key={bill?.id || Math.random()} className={`hover:bg-amber-50/50 transition-colors ${overdue ? 'bg-red-50/30' : ''}`}>
-                        <td className="px-4 py-4">
-                          <div>
-                            <p className="font-mono font-bold text-gray-900">{bill.bill_number || 'N/A'}</p>
-                            <p className="text-xs text-gray-500">Created: {formatDate(bill.created_at)}</p>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div>
-                            <p className="font-semibold text-gray-900">{bill.customer_name || 'N/A'}</p>
-                            {bill.company_name && <p className="text-xs text-gray-600">{bill.company_name}</p>}
-                            <p className="text-xs text-gray-500">📞 {bill.mobile || 'N/A'}</p>
-                            <p className="text-xs text-gray-500">📍 {bill.city || 'N/A'}</p>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div>
-                            <p className="text-sm">Due: {formatDate(bill.due_date)}</p>
-                            {overdue && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-red-100 text-red-700 mt-1">⚠️ Overdue</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 text-right">
-                          <p className="font-bold text-gray-900">{formatLKR(bill.grand_total)}</p>
-                          <p className="text-xs text-gray-500">Paid: {formatLKR(bill.paid_amount || 0)}</p>
-                        </td>
-                        <td className="px-4 py-4 text-right">
-                          <p className={`font-black text-lg ${overdue ? 'text-red-600' : 'text-amber-600'}`}>
-                            {formatLKR(bill.outstanding_amount)}
+              {/* Folder Tree Header */}
+              <div className="bg-gray-50 px-4 py-3 border-b flex items-center gap-4 text-xs font-bold text-gray-600 uppercase tracking-wider">
+                <span className="w-8"></span> {/* Spacer for folder icon */}
+                <span className="flex-1">Customer</span>
+                <span className="w-24 text-center">Bills</span>
+                <span className="w-32 text-right">Total Due</span>
+                <span className="w-24 text-center">Actions</span>
+              </div>
+              
+              {/* Customer Folders */}
+              <div className="divide-y divide-gray-100">
+                {customerList.map((customer) => {
+                  const customerKey = `${customer.id}_${customer.name}`;
+                  const isExpanded = expandedCustomers[customerKey];
+                  const customerOutstanding = customer.bills.reduce((sum, b) => sum + (b.outstanding_amount || 0), 0);
+                  const customerBillsCount = customer.bills.length;
+                  const hasOverdue = customer.bills.some(b => isOverdue(b));
+                  
+                  return (
+                    <div key={customerKey} className="border-b last:border-0">
+                      {/* Customer Folder Row */}
+                      <div 
+                        className={`flex items-center gap-4 px-4 py-3 cursor-pointer hover:bg-amber-50/50 transition-colors ${hasOverdue ? 'bg-red-50/20' : ''}`}
+                        onClick={() => toggleCustomer(customerKey)}
+                      >
+                        {/* Folder Icon + Expand Toggle */}
+                        <button 
+                          className="w-8 h-8 flex items-center justify-center text-amber-600 hover:text-amber-700 transition-colors"
+                          title={isExpanded ? 'Collapse' : 'Expand'}
+                        >
+                          {isExpanded ? (
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          ) : (
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          )}
+                        </button>
+                        
+                        {/* Folder Icon */}
+                        <svg className="w-6 h-6 text-amber-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M10 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V8a2 2 0 00-2-2h-8l-2-2z"/>
+                        </svg>
+                        
+                        {/* Customer Info */}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-900 truncate">
+                            {customer.name}
+                            {customer.company_name && <span className="text-gray-500 font-normal"> ({customer.company_name})</span>}
                           </p>
-                        </td>
-                        <td className="px-4 py-4 text-center">
-                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${getStatusBadge(bill.status, overdue)}`}>
-                            {bill.status === 'paid' ? '✓ Paid' : bill.status === 'partial' ? '◐ Partial' : '○ Pending'}
+                          <p className="text-xs text-gray-500">
+                            📞 {customer.mobile} • 📍 {customer.city}
+                          </p>
+                        </div>
+                        
+                        {/* Bills Count */}
+                        <div className="w-24 text-center">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700">
+                            {customerBillsCount} bill{customerBillsCount !== 1 ? 's' : ''}
                           </span>
-                        </td>
-                        <td className="px-4 py-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => openPaymentModal(bill)}
-                              disabled={processing === bill?.id || bill.status === 'paid'}
-                              className={`p-2 rounded-lg transition-all ${
-                                bill.status === 'paid'
-                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                  : 'bg-green-100 text-green-700 hover:bg-green-200 hover:scale-105'
-                              }`}
-                              title={bill.status === 'paid' ? 'Already paid' : 'Record payment'}
-                            >💰</button>
-                            <button
-                              onClick={() => handleReprintBill(bill)}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                              title="Reprint original bill"
-                            >🧾</button>
-                            <button
-                              onClick={() => {}}
-                              className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-all"
-                              title="View bill details"
-                            >👁️</button>
+                        </div>
+                        
+                        {/* Total Outstanding */}
+                        <div className="w-32 text-right">
+                          <p className={`font-bold ${customerOutstanding > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {formatLKR(customerOutstanding)}
+                          </p>
+                        </div>
+                        
+                        {/* Quick Actions */}
+                        <div className="w-24 text-center">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // TODO: Navigate to credit billing with this customer
+                              toast.success(`🎯 Ready to bill ${customer.name}`);
+                            }}
+                            className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                            title="Create new credit bill"
+                          >
+                            ➕
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Expanded Bills List */}
+                      {isExpanded && (
+                        <div className="bg-gray-50/50 border-t border-gray-100">
+                          <div className="pl-16 pr-4 py-2">
+                            {/* Bills Header */}
+                            <div className="flex items-center gap-4 text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                              <span className="flex-1">Bill</span>
+                              <span className="w-24 text-center">Date/Due</span>
+                              <span className="w-32 text-right">Amount</span>
+                              <span className="w-32 text-right">Due</span>
+                              <span className="w-24 text-center">Status</span>
+                              <span className="w-20 text-center">Pay</span>
+                            </div>
+                            
+                            {/* Bill Items */}
+                            <div className="space-y-2">
+                              {customer.bills.map((bill) => {
+                                const overdue = isOverdue(bill);
+                                const statusBadge = getStatusBadge(bill.status, overdue);
+                                
+                                return (
+                                  <div 
+                                    key={bill.id} 
+                                    className={`flex items-center gap-4 p-3 rounded-lg border border-gray-200 bg-white hover:border-amber-300 hover:shadow-sm transition-all ${overdue ? 'border-l-4 border-l-red-400' : ''}`}
+                                  >
+                                    {/* File Icon */}
+                                    <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    
+                                    {/* Bill Info */}
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-mono font-bold text-gray-900 text-sm">{bill.bill_number}</p>
+                                      <p className="text-xs text-gray-500 truncate">{bill.notes || 'No notes'}</p>
+                                    </div>
+                                    
+                                    {/* Date/Due */}
+                                    <div className="w-24 text-center text-xs">
+                                      <p className="text-gray-600">{formatDate(bill.created_at)}</p>
+                                      <p className={`font-medium ${overdue ? 'text-red-600' : 'text-amber-600'}`}>
+                                        Due: {formatDate(bill.due_date)}
+                                      </p>
+                                    </div>
+                                    
+                                    {/* Amount */}
+                                    <div className="w-32 text-right text-sm">
+                                      <p className="font-bold text-gray-900">{formatLKR(bill.grand_total)}</p>
+                                      <p className="text-xs text-gray-500">Paid: {formatLKR(bill.paid_amount || 0)}</p>
+                                    </div>
+                                    
+                                    {/* Outstanding */}
+                                    <div className="w-32 text-right text-sm">
+                                      <p className={`font-bold ${overdue ? 'text-red-600' : 'text-amber-600'}`}>
+                                        {formatLKR(bill.outstanding_amount)}
+                                      </p>
+                                    </div>
+                                    
+                                    {/* Status Badge */}
+                                    <div className="w-24 text-center">
+                                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border ${statusBadge}`}>
+                                        {bill.status === 'paid' ? '✓ Paid' : bill.status === 'partial' ? '◐ Partial' : '○ Pending'}
+                                      </span>
+                                    </div>
+                                    
+                                    {/* Pay Button */}
+                                    <div className="w-20 text-center">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          openPaymentModal(bill);
+                                        }}
+                                        disabled={processing === bill.id || bill.status === 'paid'}
+                                        className={`p-1.5 rounded transition-all ${
+                                          bill.status === 'paid'
+                                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                            : 'bg-green-100 text-green-700 hover:bg-green-200 hover:scale-105'
+                                        }`}
+                                        title={bill.status === 'paid' ? 'Already paid' : 'Record payment'}
+                                      >
+                                        💰
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
         
-        {/* Payment Modal */}
+        {/* Payment Modal (unchanged - works on individual bills) */}
         {showPaymentModal && selectedBill && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowPaymentModal(false)}>
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>

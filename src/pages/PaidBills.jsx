@@ -22,6 +22,9 @@ const PaidBills = () => {
     order: 'DESC'
   });
   
+  // ✅ Folder structure: expanded customer IDs
+  const [expandedCustomers, setExpandedCustomers] = useState({});
+  
   // Customer search for filter
   const [customerSearch, setCustomerSearch] = useState('');
   const [customerSuggestions, setCustomerSuggestions] = useState([]);
@@ -77,6 +80,96 @@ const PaidBills = () => {
     }
   };
 
+  // ✅ Group paid bills by customer for folder structure
+  const billsByCustomer = useMemo(() => {
+    if (!Array.isArray(paidBills)) return {};
+    
+    return paidBills.reduce((acc, bill) => {
+      const customerId = bill.customer_id;
+      const customerKey = `${customerId}_${bill.customer_name || 'Unknown'}`;
+      
+      if (!acc[customerKey]) {
+        acc[customerKey] = {
+          id: customerId,
+          name: bill.customer_name || 'Unknown',
+          company_name: bill.company_name,
+          mobile: bill.mobile,
+          city: bill.city,
+          address: bill.address,
+          bills: []
+        };
+      }
+      acc[customerKey].bills.push(bill);
+      return acc;
+    }, {});
+  }, [paidBills]);
+
+  // ✅ Get sorted/filtered customer list
+  const customerList = useMemo(() => {
+    let customers = Object.values(billsByCustomer);
+    
+    // Filter by search (customer name, company, mobile, city, bill#)
+    if (filters.search && filters.search.length >= 2) {
+      const term = filters.search.toLowerCase();
+      customers = customers.filter(customer => 
+        customer.name?.toLowerCase().includes(term) ||
+        customer.company_name?.toLowerCase().includes(term) ||
+        customer.mobile?.includes(term) ||
+        customer.city?.toLowerCase().includes(term) ||
+        customer.bills.some(bill => bill.bill_number?.toLowerCase().includes(term))
+      );
+    }
+    
+    // Sort customers
+    const order = filters.order === 'ASC' ? 1 : -1;
+    customers.sort((a, b) => {
+      const key = filters.sortBy === 'customer_name' ? 'name' : 
+                 filters.sortBy === 'grand_total' ? 'total_grand' : 
+                 filters.sortBy === 'bill_number' ? 'first_bill_number' : 'name';
+      
+      let aVal, bVal;
+      
+      if (key === 'total_grand') {
+        aVal = a.bills.reduce((sum, b) => sum + (b.grand_total || 0), 0);
+        bVal = b.bills.reduce((sum, b) => sum + (b.grand_total || 0), 0);
+      } else if (key === 'first_bill_number') {
+        aVal = a.bills[0]?.bill_number || '';
+        bVal = b.bills[0]?.bill_number || '';
+      } else {
+        aVal = a[key] || '';
+        bVal = b[key] || '';
+      }
+      
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        return aVal.localeCompare(bVal) * order;
+      }
+      return (aVal - bVal) * order;
+    });
+    
+    return customers;
+  }, [billsByCustomer, filters]);
+
+  // ✅ Toggle customer folder expand/collapse
+  const toggleCustomer = (customerKey) => {
+    setExpandedCustomers(prev => ({
+      ...prev,
+      [customerKey]: !prev[customerKey]
+    }));
+  };
+
+  // ✅ Expand/collapse all customers
+  const expandAll = () => {
+    const allExpanded = {};
+    Object.keys(billsByCustomer).forEach(key => {
+      allExpanded[key] = true;
+    });
+    setExpandedCustomers(allExpanded);
+  };
+  
+  const collapseAll = () => {
+    setExpandedCustomers({});
+  };
+
   // Format currency
   const formatLKR = (amount) => `LKR ${(amount || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
 
@@ -96,7 +189,6 @@ const PaidBills = () => {
 
   // Get payment method badge style
   const getPaymentBadge = (bill) => {
-    // Try to infer payment method from notes or default to CREDIT
     const notes = bill.notes?.toLowerCase() || '';
     if (notes.includes('cash')) return { label: '💵 Cash', class: 'bg-green-100 text-green-700' };
     if (notes.includes('card')) return { label: '💳 Card', class: 'bg-blue-100 text-blue-700' };
@@ -107,6 +199,7 @@ const PaidBills = () => {
 
   // Reprint paid bill receipt
   const handleReprintBill = async (bill) => {
+    if (!bill?.id) return;
     try {
       const response = await CreditBillService.reprintBill(bill.id);
       if (response?.success && response.data) {
@@ -175,25 +268,22 @@ const PaidBills = () => {
     printWindow.document.close();
   };
 
-  // Filter and sort bills (client-side for search)
-  const filteredBills = useMemo(() => {
-    let result = Array.isArray(paidBills) ? [...paidBills] : [];
+  // ✅ Stats calculation (aggregate across all bills)
+  const statsSummary = useMemo(() => {
+    const bills = Array.isArray(paidBills) ? paidBills : [];
+    const total = bills.reduce((sum, b) => sum + (b.grand_total || 0), 0);
+    const paid = bills.reduce((sum, b) => sum + (b.paid_amount || b.grand_total || 0), 0);
+    const uniqueCustomers = new Set(bills.map(b => b.customer_id)).size;
+    const avgBill = bills.length > 0 ? total / bills.length : 0;
     
-    // Client-side search (in addition to backend filter)
-    if (filters.search && filters.search.length >= 2) {
-      const term = filters.search.toLowerCase();
-      result = result.filter(bill => 
-        bill.customer_name?.toLowerCase().includes(term) ||
-        bill.company_name?.toLowerCase().includes(term) ||
-        bill.mobile?.includes(term) ||
-        bill.address?.toLowerCase().includes(term) ||
-        bill.city?.toLowerCase().includes(term) ||
-        bill.bill_number?.toLowerCase().includes(term)
-      );
-    }
-    
-    return result;
-  }, [paidBills, filters.search]);
+    return {
+      total_bills: bills.length,
+      unique_customers: uniqueCustomers,
+      total_revenue: total,
+      total_paid: paid,
+      avg_bill_value: avgBill
+    };
+  }, [paidBills]);
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-emerald-50/30">
@@ -205,12 +295,10 @@ const PaidBills = () => {
         <header className="bg-white shadow-sm border-b px-6 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white text-xl shadow-lg">
-                ✅
-              </div>
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white text-xl shadow-lg">📁</div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Paid Bills</h1>
-                <p className="text-sm text-gray-500">View settled bills & earnings reports</p>
+                <p className="text-sm text-gray-500">View settled bills by customer</p>
               </div>
             </div>
             
@@ -226,7 +314,7 @@ const PaidBills = () => {
               </div>
               <div className="px-4 py-2 bg-emerald-100 border border-emerald-200 rounded-xl">
                 <span className="text-sm font-bold text-emerald-700">
-                  {stats?.total_bills || 0} Paid
+                  {statsSummary.total_bills} Paid
                 </span>
               </div>
             </div>
@@ -240,10 +328,10 @@ const PaidBills = () => {
             <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 rounded-xl border border-emerald-200">
               <p className="text-xs text-emerald-600 font-medium">Total Paid Bills</p>
               <p className="text-2xl font-black text-emerald-700 mt-1">
-                {stats?.total_bills || 0}
+                {statsSummary.total_bills}
               </p>
               <p className="text-xs text-emerald-600 mt-1">
-                {stats?.unique_customers || 0} unique customers
+                {statsSummary.unique_customers} unique customers
               </p>
             </div>
             
@@ -251,10 +339,10 @@ const PaidBills = () => {
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200">
               <p className="text-xs text-blue-600 font-medium">Total Revenue</p>
               <p className="text-2xl font-black text-blue-700 mt-1">
-                {formatLKR(stats?.total_revenue)}
+                {formatLKR(statsSummary.total_revenue)}
               </p>
               <p className="text-xs text-blue-600 mt-1">
-                Avg: {formatLKR(stats?.avg_bill_value)} / bill
+                Avg: {formatLKR(statsSummary.avg_bill_value)} / bill
               </p>
             </div>
             
@@ -262,7 +350,7 @@ const PaidBills = () => {
             <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl border border-green-200">
               <p className="text-xs text-green-600 font-medium">Total Collected</p>
               <p className="text-2xl font-black text-green-700 mt-1">
-                {formatLKR(stats?.total_paid)}
+                {formatLKR(statsSummary.total_paid)}
               </p>
               <p className="text-xs text-green-600 mt-1">
                 100% of billed amount
@@ -284,7 +372,7 @@ const PaidBills = () => {
           </div>
         </div>
         
-        {/* Filters */}
+        {/* Filters & Folder Controls */}
         <div className="bg-white border-b px-6 py-4">
           <div className="flex flex-col lg:flex-row gap-4">
             {/* Search */}
@@ -293,7 +381,7 @@ const PaidBills = () => {
                 type="text"
                 value={filters.search}
                 onChange={(e) => setFilters({...filters, search: e.target.value})}
-                placeholder="🔍 Search by customer name, mobile, company, or bill #..."
+                placeholder="🔍 Search customers or bills..."
                 className="input-pos pl-10"
               />
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -327,9 +415,9 @@ const PaidBills = () => {
                 onChange={(e) => setFilters({...filters, sortBy: e.target.value})}
                 className="input-pos w-40"
               >
+                <option value="customer_name">Sort by Customer</option>
                 <option value="created_at">Sort by Date</option>
                 <option value="grand_total">Sort by Amount</option>
-                <option value="customer_name">Sort by Customer</option>
                 <option value="bill_number">Sort by Bill #</option>
               </select>
               <button
@@ -338,6 +426,24 @@ const PaidBills = () => {
                 title={`Sort ${filters.order === 'ASC' ? 'Ascending' : 'Descending'}`}
               >
                 {filters.order === 'ASC' ? '↑' : '↓'}
+              </button>
+            </div>
+            
+            {/* ✅ Folder Controls */}
+            <div className="flex gap-2">
+              <button
+                onClick={expandAll}
+                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-200 text-sm transition-colors"
+                title="Expand all customers"
+              >
+                📂 Expand All
+              </button>
+              <button
+                onClick={collapseAll}
+                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-200 text-sm transition-colors"
+                title="Collapse all customers"
+              >
+                📁 Collapse All
               </button>
             </div>
             
@@ -388,7 +494,7 @@ const PaidBills = () => {
           )}
         </div>
         
-        {/* Bills Table */}
+        {/* ✅ Folder View - Customer → Paid Bills */}
         <div className="flex-1 overflow-auto p-6">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-64 text-gray-400">
@@ -398,82 +504,178 @@ const PaidBills = () => {
               </svg>
               <p>Loading paid bills...</p>
             </div>
-          ) : !Array.isArray(filteredBills) || filteredBills.length === 0 ? (
+          ) : customerList.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-              <div className="text-6xl mb-4 opacity-30">✅</div>
+              <div className="text-6xl mb-4 opacity-30">📁</div>
               <p className="text-lg font-semibold">No paid bills found</p>
               <p className="text-sm mt-1">Adjust filters or check back later</p>
             </div>
           ) : (
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Bill #</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Customer</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Bill / Paid Date</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Amount</th>
-                    <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Payment</th>
-                    <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {filteredBills.map((bill) => {
-                    const paymentBadge = getPaymentBadge(bill);
-                    return (
-                      <tr key={bill?.id || Math.random()} className="hover:bg-emerald-50/50 transition-colors">
-                        <td className="px-4 py-4">
-                          <div>
-                            <p className="font-mono font-bold text-gray-900">{bill.bill_number || 'N/A'}</p>
-                            <p className="text-xs text-gray-500">Created: {formatDate(bill.created_at)}</p>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div>
-                            <p className="font-semibold text-gray-900">{bill.customer_name || 'N/A'}</p>
-                            {bill.company_name && <p className="text-xs text-gray-600">{bill.company_name}</p>}
-                            <p className="text-xs text-gray-500">📞 {bill.mobile || 'N/A'}</p>
-                            <p className="text-xs text-gray-500">📍 {bill.city || 'N/A'}</p>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div>
-                            <p className="text-sm">Bill: {formatDate(bill.created_at)}</p>
-                            <p className="text-sm text-emerald-600 font-medium">Paid: {bill.paid_at ? formatDate(bill.paid_at) : 'N/A'}</p>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 text-right">
-                          <p className="font-bold text-gray-900">{formatLKR(bill.grand_total)}</p>
-                          <p className="text-xs text-gray-500">Paid: {formatLKR(bill.paid_amount || bill.grand_total)}</p>
-                        </td>
-                        <td className="px-4 py-4 text-center">
-                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${paymentBadge.class} border-transparent`}>
-                            {paymentBadge.label}
+              {/* Folder Tree Header */}
+              <div className="bg-gray-50 px-4 py-3 border-b flex items-center gap-4 text-xs font-bold text-gray-600 uppercase tracking-wider">
+                <span className="w-8"></span>
+                <span className="flex-1">Customer</span>
+                <span className="w-24 text-center">Bills</span>
+                <span className="w-32 text-right">Total Revenue</span>
+                <span className="w-24 text-center">Actions</span>
+              </div>
+              
+              {/* Customer Folders */}
+              <div className="divide-y divide-gray-100">
+                {customerList.map((customer) => {
+                  const customerKey = `${customer.id}_${customer.name}`;
+                  const isExpanded = expandedCustomers[customerKey];
+                  const customerTotal = customer.bills.reduce((sum, b) => sum + (b.grand_total || 0), 0);
+                  const customerBillsCount = customer.bills.length;
+                  
+                  return (
+                    <div key={customerKey} className="border-b last:border-0">
+                      {/* Customer Folder Row */}
+                      <div 
+                        className={`flex items-center gap-4 px-4 py-3 cursor-pointer hover:bg-emerald-50/50 transition-colors`}
+                        onClick={() => toggleCustomer(customerKey)}
+                      >
+                        {/* Folder Icon + Expand Toggle */}
+                        <button 
+                          className="w-8 h-8 flex items-center justify-center text-emerald-600 hover:text-emerald-700 transition-colors"
+                          title={isExpanded ? 'Collapse' : 'Expand'}
+                        >
+                          {isExpanded ? (
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          ) : (
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          )}
+                        </button>
+                        
+                        {/* Folder Icon */}
+                        <svg className="w-6 h-6 text-emerald-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M10 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V8a2 2 0 00-2-2h-8l-2-2z"/>
+                        </svg>
+                        
+                        {/* Customer Info */}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-900 truncate">
+                            {customer.name}
+                            {customer.company_name && <span className="text-gray-500 font-normal"> ({customer.company_name})</span>}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            📞 {customer.mobile} • 📍 {customer.city}
+                          </p>
+                        </div>
+                        
+                        {/* Bills Count */}
+                        <div className="w-24 text-center">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
+                            {customerBillsCount} bill{customerBillsCount !== 1 ? 's' : ''}
                           </span>
-                        </td>
-                        <td className="px-4 py-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleReprintBill(bill)}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                              title="Reprint paid bill"
-                            >
-                              🧾
-                            </button>
-                            <button
-                              onClick={() => {}}
-                              className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-all"
-                              title="View bill details"
-                            >
-                              👁️
-                            </button>
+                        </div>
+                        
+                        {/* Total Revenue */}
+                        <div className="w-32 text-right">
+                          <p className="font-bold text-gray-900">
+                            {formatLKR(customerTotal)}
+                          </p>
+                        </div>
+                        
+                        {/* Quick Actions */}
+                        <div className="w-24 text-center">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toast.success(`📊 View ${customer.name}'s payment history`);
+                            }}
+                            className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                            title="View customer history"
+                          >
+                            📈
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* ✅ Expanded Paid Bills List */}
+                      {isExpanded && (
+                        <div className="bg-gray-50/50 border-t border-gray-100">
+                          <div className="pl-16 pr-4 py-2">
+                            {/* Bills Header */}
+                            <div className="flex items-center gap-4 text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                              <span className="flex-1">Bill</span>
+                              <span className="w-32 text-center">Bill/Paid Date</span>
+                              <span className="w-32 text-right">Amount</span>
+                              <span className="w-32 text-center">Payment</span>
+                              <span className="w-20 text-center">Reprint</span>
+                            </div>
+                            
+                            {/* Bill Items */}
+                            <div className="space-y-2">
+                              {customer.bills.map((bill) => {
+                                const paymentBadge = getPaymentBadge(bill);
+                                
+                                return (
+                                  <div 
+                                    key={bill.id} 
+                                    className="flex items-center gap-4 p-3 rounded-lg border border-gray-200 bg-white hover:border-emerald-300 hover:shadow-sm transition-all"
+                                  >
+                                    {/* File Icon */}
+                                    <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    
+                                    {/* Bill Info */}
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-mono font-bold text-gray-900 text-sm">{bill.bill_number}</p>
+                                      <p className="text-xs text-gray-500 truncate">{bill.notes || 'No notes'}</p>
+                                    </div>
+                                    
+                                    {/* Dates */}
+                                    <div className="w-32 text-center text-xs">
+                                      <p className="text-gray-600">{formatDate(bill.created_at)}</p>
+                                      <p className="text-emerald-600 font-medium">
+                                        Paid: {bill.paid_at ? formatDate(bill.paid_at).split(',')[0] : 'N/A'}
+                                      </p>
+                                    </div>
+                                    
+                                    {/* Amount */}
+                                    <div className="w-32 text-right text-sm">
+                                      <p className="font-bold text-gray-900">{formatLKR(bill.grand_total)}</p>
+                                      <p className="text-xs text-gray-500">Paid: {formatLKR(bill.paid_amount || bill.grand_total)}</p>
+                                    </div>
+                                    
+                                    {/* Payment Badge */}
+                                    <div className="w-32 text-center">
+                                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold border ${paymentBadge.class} border-transparent`}>
+                                        {paymentBadge.label}
+                                      </span>
+                                    </div>
+                                    
+                                    {/* Reprint Button */}
+                                    <div className="w-20 text-center">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleReprintBill(bill);
+                                        }}
+                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-all"
+                                        title="Reprint paid bill"
+                                      >
+                                        🧾
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
