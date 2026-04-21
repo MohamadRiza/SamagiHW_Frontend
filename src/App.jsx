@@ -10,6 +10,7 @@ import CreditBilling from "./pages/CreditBilling";
 import PendingBills from "./pages/PendingBills";
 import PaidBills from "./pages/PaidBills";
 import CustomerList from "./pages/CustomerList";
+import Expenses from "./pages/Expenses";
 
 function App() {
   return (
@@ -35,6 +36,15 @@ function App() {
             element={
               <ProtectedRoute roles={["admin", "staff"]}>
                 <CustomerList />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="expenses"
+            element={
+              <ProtectedRoute roles={["admin", "staff"]}>
+                <Expenses />
               </ProtectedRoute>
             }
           />
