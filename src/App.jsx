@@ -11,6 +11,7 @@ import PendingBills from "./pages/PendingBills";
 import PaidBills from "./pages/PaidBills";
 import CustomerList from "./pages/CustomerList";
 import Expenses from "./pages/Expenses";
+import Cheques from "./pages/Cheques";
 
 function App() {
   return (
@@ -48,6 +49,15 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route 
+  path="/cheques" 
+  element={
+    <ProtectedRoute roles={['admin', 'staff']}>
+      <Cheques />
+    </ProtectedRoute>
+  } 
+/>
 
           <Route
             path="/billing/cash"
