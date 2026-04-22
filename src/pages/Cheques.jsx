@@ -398,7 +398,7 @@ const Cheques = () => {
             <div className="flex items-center gap-3">
               <button
                 onClick={openNewChequeForm}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors flex items-center gap-2 font-medium"
+                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors flex items-center gap-2 font-medium whitespace-nowrap"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -411,7 +411,7 @@ const Cheques = () => {
         
         {/* Stats Cards */}
         <div className="bg-white border-b px-6 py-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Pending */}
             <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-4 rounded-xl border border-amber-200">
               <p className="text-xs text-amber-600 font-medium">Pending Cheques</p>
@@ -436,7 +436,7 @@ const Cheques = () => {
             {/* Total Amount */}
             <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-xl border border-indigo-200">
               <p className="text-xs text-indigo-600 font-medium">Total Value</p>
-              <p className="text-2xl font-black text-indigo-700 mt-1">{formatLKR(stats.totalAmount)}</p>
+              <p className="text-xl font-black text-indigo-700 mt-1">{formatLKR(stats.totalAmount)}</p>
               <p className="text-xs text-indigo-600 mt-1">{stats.count} cheques</p>
             </div>
           </div>
@@ -444,146 +444,147 @@ const Cheques = () => {
         
         {/* Filters */}
         <div className="bg-white border-b px-6 py-4">
-          <div className="flex flex-col lg:flex-row gap-4 items-end">
-            {/* Search */}
-            <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-500 mb-1">Search</label>
-              <div className="relative">
+          <div className="flex flex-col gap-4">
+            {/* First Row - Search and Company */}
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-gray-500 mb-1">Search</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={filters.search}
+                    onChange={(e) => setFilters({...filters, search: e.target.value})}
+                    placeholder="Search by cheque # or notes..."
+                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+              </div>
+              
+              <div className="relative w-full md:w-64" ref={companyInputRef}>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Company</label>
                 <input
                   type="text"
-                  value={filters.search}
-                  onChange={(e) => setFilters({...filters, search: e.target.value})}
-                  placeholder="Search by cheque # or notes..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  value={companySearch}
+                  onChange={(e) => handleCompanyChange(e.target.value)}
+                  onFocus={() => companySearch.length >= 2 && setShowCompanyDropdown(true)}
+                  placeholder="Type or select company..."
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
+                {showCompanyDropdown && filteredCompanies.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {filteredCompanies.map((company, index) => (
+                      <button
+                        key={index}
+                        onClick={() => selectCompany(company)}
+                        className="w-full text-left px-3 py-2 hover:bg-indigo-50 text-sm transition-colors"
+                      >
+                        {company}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             
-            {/* Company */}
-            <div className="relative" ref={companyInputRef}>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Company</label>
-              <input
-                type="text"
-                value={companySearch}
-                onChange={(e) => handleCompanyChange(e.target.value)}
-                onFocus={() => companySearch.length >= 2 && setShowCompanyDropdown(true)}
-                placeholder="Type or select company..."
-                className="w-48 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              />
-              {showCompanyDropdown && filteredCompanies.length > 0 && (
-                <div className="absolute z-50 w-48 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                  {filteredCompanies.map((company, index) => (
-                    <button
-                      key={index}
-                      onClick={() => selectCompany(company)}
-                      className="w-full text-left px-3 py-2 hover:bg-indigo-50 text-sm transition-colors"
-                    >
-                      {company}
-                    </button>
-                  ))}
+            {/* Second Row - Type, Status, Date Range */}
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="flex flex-wrap gap-4">
+                <div className="w-full sm:w-48">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Type</label>
+                  <select
+                    value={filters.type}
+                    onChange={(e) => setFilters({...filters, type: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option value="">All Types</option>
+                    <option value="incoming">📥 Incoming</option>
+                    <option value="outgoing">📤 Outgoing</option>
+                  </select>
                 </div>
-              )}
-            </div>
-            
-            {/* Type */}
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Type</label>
-              <select
-                value={filters.type}
-                onChange={(e) => setFilters({...filters, type: e.target.value})}
-                className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent min-w-[120px]"
-              >
-                <option value="">All Types</option>
-                <option value="incoming">📥 Incoming</option>
-                <option value="outgoing">📤 Outgoing</option>
-              </select>
-            </div>
-            
-            {/* Status */}
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters({...filters, status: e.target.value})}
-                className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent min-w-[120px]"
-              >
-                <option value="">All Status</option>
-                <option value="pending">⏳ Pending</option>
-                <option value="cleared">✅ Cleared</option>
-                <option value="bounced">❌ Bounced</option>
-              </select>
-            </div>
-            
-            {/* Date Range */}
-            <div className="flex gap-2 items-end">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">From</label>
-                <input
-                  type="date"
-                  value={filters.dateFrom}
-                  onChange={(e) => setFilters({...filters, dateFrom: e.target.value})}
-                  className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
+                
+                <div className="w-full sm:w-48">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
+                  <select
+                    value={filters.status}
+                    onChange={(e) => setFilters({...filters, status: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option value="">All Status</option>
+                    <option value="pending">⏳ Pending</option>
+                    <option value="cleared">✅ Cleared</option>
+                    <option value="bounced">❌ Bounced</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">To</label>
-                <input
-                  type="date"
-                  value={filters.dateTo}
-                  onChange={(e) => setFilters({...filters, dateTo: e.target.value})}
-                  className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-            
-            {/* Sort */}
-            <div className="flex gap-2">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Sort By</label>
-                <select
-                  value={filters.sortBy}
-                  onChange={(e) => setFilters({...filters, sortBy: e.target.value})}
-                  className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                >
-                  <option value="cheque_date">Date</option>
-                  <option value="amount">Amount</option>
-                  <option value="company_name">Company</option>
-                  <option value="cheque_number">Cheque #</option>
-                  <option value="status">Status</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Order</label>
+              
+              <div className="flex flex-wrap gap-4 items-end">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">From</label>
+                  <input
+                    type="date"
+                    value={filters.dateFrom}
+                    onChange={(e) => setFilters({...filters, dateFrom: e.target.value})}
+                    className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">To</label>
+                  <input
+                    type="date"
+                    value={filters.dateTo}
+                    onChange={(e) => setFilters({...filters, dateTo: e.target.value})}
+                    className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+                
+                <div className="flex gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Sort By</label>
+                    <select
+                      value={filters.sortBy}
+                      onChange={(e) => setFilters({...filters, sortBy: e.target.value})}
+                      className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    >
+                      <option value="cheque_date">Date</option>
+                      <option value="amount">Amount</option>
+                      <option value="company_name">Company</option>
+                      <option value="cheque_number">Cheque #</option>
+                      <option value="status">Status</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Order</label>
+                    <button
+                      onClick={() => setFilters({...filters, order: filters.order === 'ASC' ? 'DESC' : 'ASC'})}
+                      className="px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors min-w-[50px]"
+                      title={`Sort ${filters.order === 'ASC' ? 'Ascending' : 'Descending'}`}
+                    >
+                      {filters.order === 'ASC' ? '↑' : '↓'}
+                    </button>
+                  </div>
+                </div>
+                
                 <button
-                  onClick={() => setFilters({...filters, order: filters.order === 'ASC' ? 'DESC' : 'ASC'})}
-                  className="px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors min-w-[50px]"
-                  title={`Sort ${filters.order === 'ASC' ? 'Ascending' : 'Descending'}`}
+                  onClick={fetchCheques}
+                  disabled={loading}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2 h-[42px]"
                 >
-                  {filters.order === 'ASC' ? '↑' : '↓'}
+                  {loading ? (
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  )}
                 </button>
               </div>
             </div>
-            
-            {/* Refresh */}
-            <button
-              onClick={fetchCheques}
-              disabled={loading}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
-            >
-              {loading ? (
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                </svg>
-              ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              )}
-            </button>
           </div>
         </div>
         
@@ -606,7 +607,7 @@ const Cheques = () => {
               <p className="text-sm text-gray-500 mt-1">Add your first cheque or adjust filters</p>
               <button
                 onClick={openNewChequeForm}
-                className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors flex items-center gap-2"
+                className="mt-4 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -620,13 +621,13 @@ const Cheques = () => {
                 <table className="w-full">
                   <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Cheque #</th>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Company</th>
-                      <th className="px-4 py-3 text-right text-xs font-bold text-gray-600 uppercase tracking-wider">Amount</th>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Due Date</th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Type</th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Status</th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Actions</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider min-w-[120px]">Cheque #</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider min-w-[150px]">Company</th>
+                      <th className="px-4 py-3 text-right text-xs font-bold text-gray-600 uppercase tracking-wider min-w-[120px]">Amount</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider min-w-[140px]">Due Date</th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider min-w-[100px]">Type</th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider min-w-[120px]">Status</th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider min-w-[120px]">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
