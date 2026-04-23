@@ -1,13 +1,13 @@
-ok now i want expencess page: 
-Reason (Text box) : (why we spend this ammoung Eg: electricity, Transport, Food),
-Ammount (Textbox / Numeric) : (Only Numbers),
-Date & Time : (Auto) : (System Generate),
-Category : (Dropdown) : (Fuel, Salary, Utility, Food etc....) (in this can be able to add by + if needed)
+ok now i want checque page req:
+company name: (textbox | Dropdown (only already typed)) : who gave us this checque,
+cheque number : textbox : unique id
+ammount : textbox : value,
+checque date: datepicker : duedate,
+type: dropdown : incomming / outgoing 
+notes: TEXTBOX : optional,
+Remind date : Auto : cheque date -1 days
+also in here can be able to edit/delete 
+and can be able to select a cheque (pending/cleared/bounced)
 
-if i save have to save from db to check in feuture,
-also in this page shows expencess in this page like grid view : and in this grid can be able to edit/delete (only admin),
-and show total expencess today, if needed shows by date(from - to),
-
-(also this report can be able to generate from report "we'll develop that page later but must make ready for do that next")
-
-make it perfectly 
+and show notification before 1 days and 2days before check due tommorrow 
+and have to show notification in dashboard cheque
