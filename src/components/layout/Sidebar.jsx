@@ -26,6 +26,10 @@ const getMenuItems = (role) => [
     path: '/stock',
     roles: ['admin']
   },
+  { label: 'Purchases', 
+    icon: '🛒',
+    path: '/purchases', 
+    roles: ['admin', 'staff'] },
   {
     label: 'Credit Customers',
     icon: '👤',
