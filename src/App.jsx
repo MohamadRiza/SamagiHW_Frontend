@@ -12,6 +12,7 @@ import PaidBills from "./pages/PaidBills";
 import CustomerList from "./pages/CustomerList";
 import Expenses from "./pages/Expenses";
 import Cheques from "./pages/Cheques";
+import Purchases from "./pages/Purchases";
 
 function App() {
   return (
@@ -50,20 +51,29 @@ function App() {
             }
           />
 
-          <Route 
-  path="/cheques" 
-  element={
-    <ProtectedRoute roles={['admin', 'staff']}>
-      <Cheques />
-    </ProtectedRoute>
-  } 
-/>
+          <Route
+            path="/cheques"
+            element={
+              <ProtectedRoute roles={["admin", "staff"]}>
+                <Cheques />
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="/billing/cash"
             element={
               <ProtectedRoute roles={["admin", "staff"]}>
                 <CashBilling />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/purchases"
+            element={
+              <ProtectedRoute roles={["admin", "staff"]}>
+                <Purchases />
               </ProtectedRoute>
             }
           />
