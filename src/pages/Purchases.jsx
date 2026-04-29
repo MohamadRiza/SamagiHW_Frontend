@@ -39,6 +39,7 @@ const Purchases = () => {
   });
   const [formLoading, setFormLoading] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
+  const [fileMessage, setFileMessage] = useState('');
   
   // Payment modal state
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -84,7 +85,11 @@ const Purchases = () => {
   };
 
   // Format currency
-  const formatLKR = (amount) => `LKR ${(amount || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+  const formatLKR = (amount) => {
+    const num = Math.abs(amount || 0);
+    const formatted = num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return amount < 0 ? `- LKR ${formatted}` : `LKR ${formatted}`;
+  };
 
   // Format date for display
   const formatDate = (dateString) => {
@@ -94,67 +99,79 @@ const Purchases = () => {
     });
   };
 
-  // Handle form input change
+  // ✅ FIXED: Auto-calculate outstanding = bill_amount - paid_amount
+  const calculateOutstanding = (billAmount, paidAmount) => {
+    const bill = parseFloat(billAmount) || 0;
+    const paid = parseFloat(paidAmount) || 0;
+    return (bill - paid).toFixed(2);
+  };
+
+  // ✅ FIXED: Handle form input change with proper auto-calculation
   const handleFormChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    
-    // Auto-calculate outstanding for credit
-    if (field === 'bill_type') {
-      if (value === 'cash') {
-        setFormData(prev => ({
-          ...prev,
-          outstanding_amount: '0',
-          paid_amount: prev.bill_amount
-        }));
-      } else {
-        setFormData(prev => ({
-          ...prev,
-          outstanding_amount: prev.bill_amount,
-          paid_amount: '0'
-        }));
+    setFormData(prev => {
+      const newState = { ...prev, [field]: value };
+      
+      // Only auto-calculate for credit purchases
+      if (prev.bill_type === 'credit') {
+        if (field === 'bill_amount' || field === 'paid_amount') {
+          // Outstanding = Bill Amount - Paid Amount
+          const billAmount = field === 'bill_amount' ? value : prev.bill_amount;
+          const paidAmount = field === 'paid_amount' ? value : prev.paid_amount;
+          newState.outstanding_amount = calculateOutstanding(billAmount, paidAmount);
+        }
       }
+      
+      // Cash: always fully paid
+      if (prev.bill_type === 'cash' && field === 'bill_amount') {
+        newState.paid_amount = value;
+        newState.outstanding_amount = '0';
+      }
+      
+      return newState;
+    });
+  };
+
+  // ✅ FIXED: Handle file upload with confirmation and preview
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // Validate file type
+    const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('❌ Only PDF, JPG, JPEG, and PNG files are allowed');
+      e.target.value = '';
+      return;
     }
     
-    // Auto-calculate outstanding when bill amount changes
-    if (field === 'bill_amount' && formData.bill_type === 'cash') {
-      setFormData(prev => ({
-        ...prev,
-        paid_amount: value,
-        outstanding_amount: '0'
-      }));
+    // Validate file size (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('❌ File size must be less than 10MB');
+      e.target.value = '';
+      return;
+    }
+    
+    // ✅ Set file and show confirmation
+    setFormData(prev => ({ ...prev, bill_file: file }));
+    setFileMessage(`✅ ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
+    
+    // Create preview for images
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewFile(reader.result);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setPreviewFile(null);
     }
   };
 
-  // Handle file upload
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Validate file type
-      const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
-      if (!validTypes.includes(file.type)) {
-        toast.error('Only PDF, JPG, JPEG, and PNG files are allowed');
-        return;
-      }
-      
-      // Validate file size (10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error('File size must be less than 10MB');
-        return;
-      }
-      
-      setFormData(prev => ({ ...prev, bill_file: file }));
-      
-      // Create preview for images
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setPreviewFile(reader.result);
-        };
-        reader.readAsDataURL(file);
-      } else {
-        setPreviewFile(null);
-      }
-    }
+  // ✅ FIXED: Remove file
+  const handleRemoveFile = () => {
+    setFormData(prev => ({ ...prev, bill_file: null }));
+    setPreviewFile(null);
+    setFileMessage('');
   };
 
   // Reset form
@@ -171,6 +188,7 @@ const Purchases = () => {
     });
     setEditingPurchase(null);
     setPreviewFile(null);
+    setFileMessage('');
   };
 
   // Open form for new purchase
@@ -179,7 +197,7 @@ const Purchases = () => {
     setShowForm(true);
   };
 
-  // Open form for editing purchase
+  // ✅ FIXED: Open form for editing purchase with proper data
   const openEditPurchaseForm = (purchase) => {
     setFormData({
       title: purchase.title,
@@ -188,9 +206,12 @@ const Purchases = () => {
       outstanding_amount: purchase.outstanding_amount.toString(),
       paid_amount: purchase.paid_amount.toString(),
       purchase_date: purchase.purchase_date,
-      notes: purchase.notes || ''
+      notes: purchase.notes || '',
+      bill_file: null
     });
     setEditingPurchase(purchase);
+    setPreviewFile(null);
+    setFileMessage(purchase.bill_file_name ? `📎 ${purchase.bill_file_name}` : '');
     setShowForm(true);
   };
 
@@ -208,25 +229,38 @@ const Purchases = () => {
     setViewingPurchase(purchase);
   };
 
-  // Handle form submit (create/update)
+  // ✅ FIXED: Handle form submit with better validation
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Validation
     if (!formData.title.trim() || formData.title.trim().length < 3) {
-      toast.error('Title must be at least 3 characters');
+      toast.error('❌ Title must be at least 3 characters');
       return;
     }
     
     const billAmount = parseFloat(formData.bill_amount);
     if (isNaN(billAmount) || billAmount <= 0) {
-      toast.error('Bill amount must be a positive number');
+      toast.error('❌ Bill amount must be a positive number');
       return;
     }
     
     if (!formData.purchase_date) {
-      toast.error('Purchase date is required');
+      toast.error('❌ Purchase date is required');
       return;
+    }
+    
+    // For credit: calculate outstanding from bill and paid
+    let outstandingAmount = 0;
+    let paidAmount = 0;
+    
+    if (formData.bill_type === 'credit') {
+      paidAmount = parseFloat(formData.paid_amount) || 0;
+      outstandingAmount = billAmount - paidAmount; // Can be negative (advance)
+    } else {
+      // Cash: fully paid
+      paidAmount = billAmount;
+      outstandingAmount = 0;
     }
     
     setFormLoading(true);
@@ -236,8 +270,8 @@ const Purchases = () => {
         title: formData.title.trim(),
         bill_type: formData.bill_type,
         bill_amount: billAmount,
-        outstanding_amount: formData.bill_type === 'credit' ? parseFloat(formData.outstanding_amount) || billAmount : 0,
-        paid_amount: formData.bill_type === 'cash' ? billAmount : (parseFloat(formData.paid_amount) || 0),
+        outstanding_amount: outstandingAmount,
+        paid_amount: paidAmount,
         purchase_date: formData.purchase_date,
         notes: formData.notes?.trim() || null,
         bill_file: formData.bill_file
@@ -262,11 +296,11 @@ const Purchases = () => {
         fetchPurchases();
         fetchStats();
       } else {
-        toast.error(response?.error || 'Failed to save purchase');
+        toast.error(response?.error || '❌ Failed to save purchase');
       }
     } catch (error) {
       console.error('Submit purchase error:', error);
-      toast.error('Network error saving purchase');
+      toast.error('❌ Network error saving purchase');
     } finally {
       setFormLoading(false);
     }
@@ -278,7 +312,7 @@ const Purchases = () => {
     
     const amount = parseFloat(paymentData.paid_amount);
     if (isNaN(amount) || amount <= 0) {
-      toast.error('Please enter a valid payment amount');
+      toast.error('❌ Please enter a valid payment amount');
       return;
     }
     
@@ -293,18 +327,18 @@ const Purchases = () => {
         fetchPurchases();
         fetchStats();
       } else {
-        toast.error(response?.error || 'Failed to record payment');
+        toast.error(response?.error || '❌ Failed to record payment');
       }
     } catch (error) {
       console.error('Payment error:', error);
-      toast.error('Network error recording payment');
+      toast.error('❌ Network error recording payment');
     }
   };
 
   // Handle delete purchase (admin only)
   const handleDeletePurchase = async (purchase) => {
     if (!isAdmin) {
-      toast.error('Only admins can delete purchases');
+      toast.error('❌ Only admins can delete purchases');
       return;
     }
     
@@ -319,11 +353,11 @@ const Purchases = () => {
         fetchPurchases();
         fetchStats();
       } else {
-        toast.error(response?.error || 'Failed to delete purchase');
+        toast.error(response?.error || '❌ Failed to delete purchase');
       }
     } catch (error) {
       console.error('Delete purchase error:', error);
-      toast.error('Network error deleting purchase');
+      toast.error('❌ Network error deleting purchase');
     }
   };
 
@@ -334,18 +368,66 @@ const Purchases = () => {
       : { label: '💵 Cash', class: 'bg-green-100 text-green-700 border-green-200' };
   };
 
-  // Get payment status badge
+  // ✅ FIXED: Get payment status with clear exceed/advance display
   const getPaymentStatus = (purchase) => {
     if (purchase.bill_type === 'cash') {
       return { label: '✓ Paid', class: 'bg-green-100 text-green-700' };
     }
     
-    if (purchase.outstanding_amount <= 0) {
-      return { label: '✓ Fully Paid', class: 'bg-green-100 text-green-700' };
-    } else if (purchase.paid_amount > 0) {
-      return { label: '◐ Partial', class: 'bg-amber-100 text-amber-700' };
+    const bill = parseFloat(purchase.bill_amount) || 0;
+    const paid = parseFloat(purchase.paid_amount) || 0;
+    const outstanding = parseFloat(purchase.outstanding_amount) || 0;
+    
+    if (paid > bill) {
+      // Exceed/Advance payment
+      const exceed = paid - bill;
+      return { 
+        label: `⚡ Exceed +${formatLKR(exceed)}`, 
+        class: 'bg-cyan-100 text-cyan-700 border-cyan-200 border' 
+      };
+    } else if (outstanding <= 0.01) {
+      return { label: '✓ Fully Paid', class: 'bg-green-100 text-green-700 border-green-200 border' };
+    } else if (paid > 0) {
+      return { label: '◐ Partial', class: 'bg-amber-100 text-amber-700 border-amber-200 border' };
     } else {
-      return { label: '○ Unpaid', class: 'bg-red-100 text-red-700' };
+      return { label: '○ Unpaid', class: 'bg-red-100 text-red-700 border-red-200 border' };
+    }
+  };
+
+  // ✅ FIXED: Get balance display with clear exceed/advance support
+  const getBalanceDisplay = (purchase) => {
+    if (purchase.bill_type === 'cash') {
+      return { 
+        text: 'Fully Paid', 
+        class: 'text-green-600 font-bold',
+        tooltip: 'Cash purchase - fully settled'
+      };
+    }
+    
+    const bill = parseFloat(purchase.bill_amount) || 0;
+    const paid = parseFloat(purchase.paid_amount) || 0;
+    const outstanding = parseFloat(purchase.outstanding_amount) || 0;
+    
+    if (paid > bill) {
+      // Exceed/Advance payment - show positive exceed amount
+      const exceed = paid - bill;
+      return { 
+        text: `Exceed +${formatLKR(exceed)}`, 
+        class: 'text-cyan-600 font-bold',
+        tooltip: `Paid ${formatLKR(paid)} for bill of ${formatLKR(bill)}`
+      };
+    } else if (outstanding <= 0.01) {
+      return { 
+        text: '✓ Settled', 
+        class: 'text-green-600 font-bold',
+        tooltip: 'Fully paid'
+      };
+    } else {
+      return { 
+        text: formatLKR(outstanding), 
+        class: 'text-red-600 font-bold',
+        tooltip: 'Amount still due'
+      };
     }
   };
 
@@ -576,7 +658,7 @@ const Purchases = () => {
                       <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider min-w-[100px]">Type</th>
                       <th className="px-4 py-3 text-right text-xs font-bold text-gray-600 uppercase tracking-wider min-w-[120px]">Bill Amount</th>
                       <th className="px-4 py-3 text-right text-xs font-bold text-gray-600 uppercase tracking-wider min-w-[120px]">Paid</th>
-                      <th className="px-4 py-3 text-right text-xs font-bold text-gray-600 uppercase tracking-wider min-w-[120px]">Outstanding</th>
+                      <th className="px-4 py-3 text-right text-xs font-bold text-gray-600 uppercase tracking-wider min-w-[140px]">Balance</th>
                       <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider min-w-[120px]">Date</th>
                       <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider min-w-[100px]">Status</th>
                       <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider min-w-[120px]">Actions</th>
@@ -586,10 +668,11 @@ const Purchases = () => {
                     {filteredPurchases.map((purchase) => {
                       const typeBadge = getTypeBadge(purchase.bill_type);
                       const paymentStatus = getPaymentStatus(purchase);
+                      const balanceDisplay = getBalanceDisplay(purchase);
                       const hasBill = purchase.bill_file_path;
                       
                       return (
-                        <tr key={purchase.id} className="hover:bg-gray-50 transition-colors">
+                        <tr key={purchase.id} className="hover:bg-gray-50 transition-colors" title={balanceDisplay.tooltip}>
                           <td className="px-4 py-3">
                             <p className="font-semibold text-gray-900 text-sm">{purchase.title}</p>
                             {purchase.notes && (
@@ -609,8 +692,8 @@ const Purchases = () => {
                             <p className="font-bold text-green-600 text-sm">{formatLKR(purchase.paid_amount)}</p>
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <p className={`font-bold text-sm ${purchase.outstanding_amount > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                              {formatLKR(purchase.outstanding_amount)}
+                            <p className={`text-sm ${balanceDisplay.class}`}>
+                              {balanceDisplay.text}
                             </p>
                           </td>
                           <td className="px-4 py-3">
@@ -618,7 +701,7 @@ const Purchases = () => {
                             <p className="text-xs text-gray-500">Uploaded: {formatDate(purchase.uploaded_at)}</p>
                           </td>
                           <td className="px-4 py-3 text-center">
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${paymentStatus.class}`}>
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold border ${paymentStatus.class}`}>
                               {paymentStatus.label}
                             </span>
                           </td>
@@ -635,7 +718,7 @@ const Purchases = () => {
                                   📄
                                 </a>
                               )}
-                              {purchase.bill_type === 'credit' && purchase.outstanding_amount > 0 && (
+                              {purchase.bill_type === 'credit' && parseFloat(purchase.outstanding_amount) > 0 && (
                                 <button
                                   onClick={() => openPaymentModal(purchase)}
                                   className="p-1.5 text-green-600 hover:bg-green-50 rounded transition-colors"
@@ -713,10 +796,24 @@ const Purchases = () => {
                     <p className="font-bold text-green-600">{formatLKR(viewingPurchase.paid_amount)}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Outstanding</p>
-                    <p className="font-bold text-red-600">{formatLKR(viewingPurchase.outstanding_amount)}</p>
+                    <p className="text-xs text-gray-500">Balance</p>
+                    <p className={`font-bold ${getBalanceDisplay(viewingPurchase).class}`}>
+                      {getBalanceDisplay(viewingPurchase).text}
+                    </p>
                   </div>
                 </div>
+                
+                {/* Show exceed/advance details if applicable */}
+                {viewingPurchase.bill_type === 'credit' && parseFloat(viewingPurchase.paid_amount) > parseFloat(viewingPurchase.bill_amount) && (
+                  <div className="p-3 bg-cyan-50 rounded-lg border border-cyan-200">
+                    <p className="text-sm text-cyan-800 font-medium">
+                      ⚡ Advance Payment: {formatLKR(parseFloat(viewingPurchase.paid_amount) - parseFloat(viewingPurchase.bill_amount))}
+                    </p>
+                    <p className="text-xs text-cyan-600 mt-1">
+                      Customer paid more than the bill amount
+                    </p>
+                  </div>
+                )}
                 
                 <div className="py-2 border-b border-gray-100">
                   <p className="text-xs text-gray-500 mb-1">Purchase Date</p>
@@ -746,7 +843,7 @@ const Purchases = () => {
               </div>
               
               <div className="flex gap-3 mt-6 pt-4 border-t">
-                {viewingPurchase.bill_type === 'credit' && viewingPurchase.outstanding_amount > 0 && (
+                {viewingPurchase.bill_type === 'credit' && parseFloat(viewingPurchase.outstanding_amount) > 0 && (
                   <button
                     onClick={() => {
                       setViewingPurchase(null);
@@ -768,7 +865,7 @@ const Purchases = () => {
           </div>
         )}
         
-        {/* Purchase Form Modal */}
+        {/* Purchase Form Modal - FIXED */}
         {showForm && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
             <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -851,26 +948,7 @@ const Purchases = () => {
                   <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                     <div>
                       <label className="block text-sm font-bold text-blue-700 mb-1">
-                        Outstanding Amount
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600 font-bold">LKR</span>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={formData.outstanding_amount}
-                          onChange={(e) => handleFormChange('outstanding_amount', e.target.value)}
-                          className="w-full pl-14 pr-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-bold"
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <p className="text-xs text-blue-600 mt-1">Amount to be paid later</p>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-bold text-blue-700 mb-1">
-                        Paid Amount (if any)
+                        Paid Amount
                       </label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600 font-bold">LKR</span>
@@ -884,13 +962,48 @@ const Purchases = () => {
                           placeholder="0.00"
                         />
                       </div>
-                      <p className="text-xs text-blue-600 mt-1">Initial payment (optional)</p>
+                      <p className="text-xs text-blue-600 mt-1">Amount already paid</p>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-bold text-blue-700 mb-1">
+                        Balance (Auto)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600 font-bold">LKR</span>
+                        <input
+                          type="text"
+                          value={formData.outstanding_amount}
+                          readOnly
+                          className={`w-full pl-14 pr-3 py-2 border rounded-lg bg-blue-50 font-bold ${
+                            parseFloat(formData.outstanding_amount) < 0 
+                              ? 'border-cyan-300 text-cyan-900' 
+                              : parseFloat(formData.outstanding_amount) > 0 
+                                ? 'border-red-300 text-red-900' 
+                                : 'border-green-300 text-green-900'
+                          }`}
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <p className={`text-xs mt-1 font-medium ${
+                        parseFloat(formData.outstanding_amount) < 0 
+                          ? 'text-cyan-600' 
+                          : parseFloat(formData.outstanding_amount) > 0 
+                            ? 'text-red-600' 
+                            : 'text-green-600'
+                      }`}>
+                        {parseFloat(formData.outstanding_amount) < 0 
+                          ? `⚡ Exceed +${formatLKR(Math.abs(parseFloat(formData.outstanding_amount)))}` 
+                          : parseFloat(formData.outstanding_amount) > 0 
+                            ? '⏳ Amount due' 
+                            : '✓ Fully settled'}
+                      </p>
                     </div>
                   </div>
                 ) : (
                   <div className="p-4 bg-green-50 rounded-lg border border-green-200">
                     <p className="text-sm text-green-800 font-medium">
-                      ✅ Cash purchase - Full amount will be marked as paid
+                      ✅ Cash purchase - Full amount marked as paid
                     </p>
                   </div>
                 )}
@@ -900,25 +1013,50 @@ const Purchases = () => {
                   <label className="block text-sm font-bold text-gray-700 mb-1">
                     Upload Bill (PDF/JPG/JPEG/PNG)
                   </label>
-                  <div className="flex items-center gap-4">
-                    <label className="flex-1 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors text-center">
-                      <input
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={handleFileUpload}
-                        className="hidden"
-                      />
-                      <div className="space-y-1">
-                        <p className="text-sm text-gray-600">
-                          {formData.bill_file ? formData.bill_file.name : 'Click to upload bill'}
-                        </p>
-                        <p className="text-xs text-gray-400">Max 10MB • PDF, JPG, PNG</p>
-                      </div>
-                    </label>
-                  </div>
+                  
+                  {/* File Input */}
+                  <label className="block px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors text-center">
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <div className="space-y-1">
+                      {formData.bill_file ? (
+                        <>
+                          <p className="text-sm text-green-600 font-medium">{fileMessage}</p>
+                          <p className="text-xs text-gray-400">Click to change file</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm text-gray-600">Click to upload bill</p>
+                          <p className="text-xs text-gray-400">Max 10MB • PDF, JPG, PNG</p>
+                        </>
+                      )}
+                    </div>
+                  </label>
+                  
+                  {/* Remove File Button */}
+                  {formData.bill_file && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveFile}
+                      className="mt-2 text-xs text-red-600 hover:text-red-700 font-medium"
+                    >
+                      🗑️ Remove file
+                    </button>
+                  )}
+                  
+                  {/* Image Preview */}
                   {previewFile && (
                     <div className="mt-3">
-                      <img src={previewFile} alt="Bill preview" className="max-h-48 rounded-lg border border-gray-200" />
+                      <p className="text-xs text-gray-500 mb-2">Preview:</p>
+                      <img 
+                        src={previewFile} 
+                        alt="Bill preview" 
+                        className="max-h-48 rounded-lg border border-gray-200 object-contain" 
+                      />
                     </div>
                   )}
                 </div>
@@ -981,8 +1119,10 @@ const Purchases = () => {
                   <p className="text-sm text-blue-800 font-medium mb-2">Payment Details</p>
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-blue-600">Outstanding:</span>
-                      <span className="font-bold text-blue-900">LKR {purchases.find(p => p.id === paymentData.purchase_id)?.outstanding_amount?.toFixed(2)}</span>
+                      <span className="text-blue-600">Current Outstanding:</span>
+                      <span className="font-bold text-blue-900">
+                        LKR {Math.abs(purchases.find(p => p.id === paymentData.purchase_id)?.outstanding_amount || 0).toFixed(2)}
+                      </span>
                     </div>
                   </div>
                 </div>
