@@ -3,6 +3,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { Sidebar } from '../components/layout';
 import ProductService from '../services/product.service';
 import BillService from '../services/bill.service';
+import CustomerService from '../services/customer.service';
+import CreditBillService from '../services/creditBill.service';
 import { Toaster, toast } from 'react-hot-toast';
 
 // 🔊 Professional scan sound
@@ -22,8 +24,1160 @@ const playScanSound = () => {
   } catch (e) {}
 };
 
+// 🎨 Product Confirmation Modal Component - FULL KEYBOARD NAVIGATION
+const ProductConfirmationModal = ({ product, isOpen, onClose, onConfirm, formatLKR }) => {
+  const [quantity, setQuantity] = useState(1);
+  const [discountMode, setDiscountMode] = useState('default');
+  const [discountValue, setDiscountValue] = useState(0);
+  const [discountLKR, setDiscountLKR] = useState(0);
+  const [focusedField, setFocusedField] = useState('quantity');
+  
+  const modalRef = useRef(null);
+  const qtyInputRef = useRef(null);
+  const discountInputRef = useRef(null);
+
+  const unitPrice = product?.selling_price || 0;
+  const maxStock = product?.stock_quantity || 0;
+  const autoDiscount = product?.discount_type === 'percent'
+    ? unitPrice * (product.discount_value || 0) / 100
+    : product?.discount_value || 0;
+
+  useEffect(() => {
+    if (isOpen) {
+      setQuantity(1);
+      setDiscountMode('default');
+      setDiscountValue(product?.discount_value || 0);
+      setDiscountLKR(autoDiscount);
+      setFocusedField('quantity');
+      
+      setTimeout(() => {
+        qtyInputRef.current?.focus();
+        qtyInputRef.current?.select();
+      }, 50);
+    }
+  }, [isOpen, product, autoDiscount]);
+
+  useEffect(() => {
+    if (discountMode === 'default') {
+      setDiscountLKR(autoDiscount);
+      setDiscountValue(product?.discount_value || 0);
+    } else if (discountMode === 'percent') {
+      const val = Math.min(100, Math.max(0, discountValue));
+      setDiscountLKR(unitPrice * val / 100);
+    } else if (discountMode === 'fixed') {
+      const val = Math.min(unitPrice, Math.max(0, discountValue));
+      setDiscountLKR(val);
+    }
+  }, [discountMode, discountValue, unitPrice, autoDiscount, product]);
+
+  const handleQuantityChange = (val) => {
+    const qty = parseInt(val) || 1;
+    setQuantity(Math.min(Math.max(1, qty), maxStock));
+  };
+
+  const handleDiscountValueChange = (val) => {
+    const num = parseFloat(val) || 0;
+    if (discountMode === 'percent') {
+      setDiscountValue(Math.min(100, Math.max(0, num)));
+    } else {
+      setDiscountValue(Math.min(unitPrice, Math.max(0, num)));
+    }
+  };
+
+  const handleConfirm = () => {
+    if (quantity > maxStock) {
+      toast.error(`⚠️ Max stock: ${maxStock}`);
+      return;
+    }
+    
+    onConfirm({
+      quantity,
+      discountMode,
+      discountValue: discountMode === 'default' ? (product?.discount_value || 0) : discountValue,
+      discountType: discountMode === 'default' ? (product?.discount_type || 'fixed') : discountMode,
+      discountLKR: discountMode === 'default' ? autoDiscount : discountLKR
+    });
+    onClose();
+  };
+
+  const handleKeyDown = (e) => {
+    if (focusedField === 'quantity') {
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        handleQuantityChange(quantity + 1);
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        handleQuantityChange(quantity - 1);
+      } else if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        setFocusedField('discountMode');
+      }
+    }
+    
+    if (focusedField === 'discountMode') {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const modes = ['default', 'percent', 'fixed'];
+        const currentIndex = modes.indexOf(discountMode);
+        const direction = e.key === 'ArrowDown' ? 1 : -1;
+        const newIndex = (currentIndex + direction + modes.length) % modes.length;
+        setDiscountMode(modes[newIndex]);
+      } else if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        if (discountMode === 'default') {
+          handleConfirm();
+        } else {
+          setFocusedField('discountValue');
+          setTimeout(() => {
+            discountInputRef.current?.focus();
+            discountInputRef.current?.select();
+          }, 10);
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setFocusedField('quantity');
+        qtyInputRef.current?.focus();
+      }
+    }
+    
+    if (focusedField === 'discountValue' && discountMode !== 'default') {
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const increment = discountMode === 'percent' ? 1 : 1;
+        handleDiscountValueChange(discountValue + increment);
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const decrement = discountMode === 'percent' ? 1 : 1;
+        handleDiscountValueChange(discountValue - decrement);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        handleConfirm();
+      } else if (e.key === 'Escape' || e.key === 'Tab') {
+        e.preventDefault();
+        setFocusedField('discountMode');
+      }
+    }
+    
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      onClose();
+    }
+  };
+
+  useEffect(() => {
+    if (focusedField === 'quantity') {
+      qtyInputRef.current?.focus();
+      qtyInputRef.current?.select();
+    } else if (focusedField === 'discountValue' && discountMode !== 'default') {
+      discountInputRef.current?.focus();
+      discountInputRef.current?.select();
+    }
+  }, [focusedField, discountMode]);
+
+  if (!isOpen || !product) return null;
+
+  const itemTotal = unitPrice * quantity;
+  const totalDiscount = discountLKR * quantity;
+  const finalTotal = itemTotal - totalDiscount;
+
+  return (
+    <div 
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" 
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="product-modal-title"
+    >
+      <div 
+        ref={modalRef}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg border border-gray-200 overflow-hidden animate-in fade-in zoom-in duration-200 outline-none"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
+        tabIndex={-1}
+      >
+        {/* Modal Header */}
+        <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white text-xl">
+              🛍️
+            </div>
+            <div>
+              <h3 id="product-modal-title" className="text-lg font-bold text-white">Add to Cart</h3>
+              <p className="text-xs text-white/80">⌨️ Use ↑↓ to adjust, Enter to confirm</p>
+            </div>
+          </div>
+          <button 
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+            aria-label="Close modal"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Modal Body */}
+        <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+          {/* Product Info */}
+          <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
+            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center text-primary-700 font-bold text-2xl flex-shrink-0 shadow-sm">
+              {(product?.item_name || '?').charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="font-bold text-gray-900 text-lg truncate">{product?.item_name || 'N/A'}</h4>
+              <p className="text-sm text-gray-500 font-mono mt-1 bg-gray-100 inline-block px-2 py-0.5 rounded">
+                {product?.barcode || 'No barcode'}
+              </p>
+              {product?.short_form && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-primary-100 text-primary-700 border border-primary-200 mt-2">
+                  {product.short_form}
+                </span>
+              )}
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-black text-primary-700">{formatLKR(unitPrice)}</p>
+              <p className={`text-xs font-medium ${maxStock <= 10 ? 'text-red-600' : 'text-green-600'}`}>
+                Stock: {maxStock}
+              </p>
+            </div>
+          </div>
+
+          {/* Auto Discount Badge */}
+          {autoDiscount > 0 && discountMode === 'default' && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
+              <span className="text-green-600">✓</span>
+              <span className="text-sm font-medium text-green-700">
+                Auto Discount: {formatLKR(autoDiscount)} ({product?.discount_value}{product?.discount_type === 'percent' ? '%' : ''})
+              </span>
+            </div>
+          )}
+
+          {/* Quantity Selector */}
+          <div className={`p-4 rounded-xl border-2 transition-all ${focusedField === 'quantity' ? 'border-primary-500 bg-primary-50/30 ring-2 ring-primary-200' : 'border-gray-200 bg-gray-50'}`}>
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              Quantity 
+              {focusedField === 'quantity' && <span className="text-xs text-primary-600 font-normal">← Active (↑↓ to adjust)</span>}
+            </label>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => handleQuantityChange(quantity - 1)}
+                className="w-10 h-10 rounded-xl border-2 border-gray-200 hover:border-primary-500 hover:bg-primary-50 flex items-center justify-center text-xl font-bold text-gray-700 transition-colors disabled:opacity-50"
+                disabled={quantity <= 1}
+                aria-label="Decrease quantity"
+              >
+                −
+              </button>
+              <input
+                ref={qtyInputRef}
+                type="number"
+                min="1"
+                max={maxStock}
+                value={quantity}
+                onChange={(e) => handleQuantityChange(e.target.value)}
+                onFocus={() => setFocusedField('quantity')}
+                className="flex-1 text-center text-xl font-bold border-2 border-gray-200 rounded-xl py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none"
+                aria-label="Quantity input"
+              />
+              <button
+                type="button"
+                onClick={() => handleQuantityChange(quantity + 1)}
+                className="w-10 h-10 rounded-xl border-2 border-gray-200 hover:border-primary-500 hover:bg-primary-50 flex items-center justify-center text-xl font-bold text-gray-700 transition-colors disabled:opacity-50"
+                disabled={quantity >= maxStock}
+                aria-label="Increase quantity"
+              >
+                +
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Max available: {maxStock} • Press Enter to continue →</p>
+          </div>
+
+          {/* Discount Controls */}
+          <div className={`p-4 rounded-xl border-2 transition-all ${focusedField === 'discountMode' || focusedField === 'discountValue' ? 'border-primary-500 bg-primary-50/30 ring-2 ring-primary-200' : 'border-gray-200 bg-gray-50'}`}>
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              Discount 
+              {(focusedField === 'discountMode' || focusedField === 'discountValue') && <span className="text-xs text-primary-600 font-normal">← Active</span>}
+            </label>
+            <div className="space-y-3">
+              <select
+                value={discountMode}
+                onChange={(e) => {
+                  setDiscountMode(e.target.value);
+                  if (e.target.value === 'default') {
+                    handleConfirm();
+                  } else {
+                    setFocusedField('discountValue');
+                  }
+                }}
+                onFocus={() => setFocusedField('discountMode')}
+                className={`w-full border-2 rounded-xl py-2.5 px-4 bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-medium outline-none ${
+                  focusedField === 'discountMode' ? 'border-primary-500 ring-2 ring-primary-200' : 'border-gray-200'
+                }`}
+                aria-label="Discount mode selection"
+              >
+                <option value="default">🤖 Auto Discount ({product?.discount_value}{product?.discount_type === 'percent' ? '%' : ''})</option>
+                <option value="percent">📊 Manual Percentage (%)</option>
+                <option value="fixed">💵 Manual Amount (LKR)</option>
+              </select>
+              
+              {discountMode !== 'default' && (
+                <div className="relative">
+                  <input
+                    ref={discountInputRef}
+                    type="number"
+                    min="0"
+                    step={discountMode === 'percent' ? "1" : "0.01"}
+                    max={discountMode === 'percent' ? "100" : unitPrice}
+                    value={discountValue}
+                    onChange={(e) => handleDiscountValueChange(e.target.value)}
+                    onFocus={() => setFocusedField('discountValue')}
+                    className={`w-full text-right border-2 rounded-xl py-2.5 px-4 pr-12 font-medium focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none ${
+                      focusedField === 'discountValue' ? 'border-primary-500 ring-2 ring-primary-200' : 'border-gray-200'
+                    }`}
+                    placeholder={discountMode === 'percent' ? 'Enter %' : 'Enter LKR'}
+                    aria-label={`Discount ${discountMode === 'percent' ? 'percentage' : 'amount'} input`}
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400">
+                    {discountMode === 'percent' ? '%' : 'LKR'}
+                  </span>
+                </div>
+              )}
+              
+              {discountLKR > 0 && (
+                <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-xl">
+                  <span className="text-sm font-medium text-green-700">Discount per item:</span>
+                  <span className="font-bold text-green-700">{formatLKR(discountLKR)}</span>
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              {discountMode === 'default' 
+                ? '✓ Auto discount applied • Press Enter to add to cart' 
+                : '↑↓ to adjust value • Press Enter to confirm'}
+            </p>
+          </div>
+
+          {/* Price Summary */}
+          <div className="p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Subtotal ({quantity} × {formatLKR(unitPrice)})</span>
+              <span className="font-medium">{formatLKR(itemTotal)}</span>
+            </div>
+            {totalDiscount > 0 && (
+              <div className="flex justify-between text-sm text-green-600">
+                <span>Discount ({quantity} × {formatLKR(discountLKR)})</span>
+                <span className="font-medium">− {formatLKR(totalDiscount)}</span>
+              </div>
+            )}
+            <div className="border-t border-gray-200 pt-2 flex justify-between">
+              <span className="text-lg font-bold text-gray-900">Total</span>
+              <span className="text-2xl font-black text-primary-700">{formatLKR(finalTotal)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Modal Footer */}
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-3 px-4 border-2 border-gray-300 hover:border-gray-400 text-gray-700 font-bold rounded-xl transition-all hover:bg-gray-100"
+          >
+            Cancel (ESC)
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={quantity > maxStock}
+            className="flex-1 py-3 px-4 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            ✓ Add to Cart (Enter)
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 👤 Credit Customer Modal Component - FULL KEYBOARD NAVIGATION
+const CreditCustomerModal = ({ isOpen, onClose, onConfirm, customers, formatLKR }) => {
+  const [customerType, setCustomerType] = useState('existing');
+  const [searchCustomer, setSearchCustomer] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [filteredCustomers, setFilteredCustomers] = useState([]);
+  const [dropdownIndex, setDropdownIndex] = useState(0);
+  
+  const [newCustomer, setNewCustomer] = useState({
+    customer_type: 'individual',
+    name: '',
+    company_name: '',
+    mobile: '',
+    email: '',
+    address: '',
+    city: '',
+    nic_id: ''
+  });
+  const [dueDate, setDueDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d.toISOString().slice(0, 10);
+  });
+  const [notes, setNotes] = useState('');
+  
+  const [focusedField, setFocusedField] = useState('search');
+  
+  const modalRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const dueDateInputRef = useRef(null);
+  const notesInputRef = useRef(null);
+  const newCustomerRefs = useRef({});
+
+  useEffect(() => {
+    if (isOpen) {
+      setCustomerType('existing');
+      setSearchCustomer('');
+      setSelectedCustomer(null);
+      setShowDropdown(false);
+      setFilteredCustomers([]);
+      setDropdownIndex(0);
+      setNewCustomer({
+        customer_type: 'individual',
+        name: '',
+        company_name: '',
+        mobile: '',
+        email: '',
+        address: '',
+        city: '',
+        nic_id: ''
+      });
+      const d = new Date();
+      d.setDate(d.getDate() + 30);
+      setDueDate(d.toISOString().slice(0, 10));
+      setNotes('');
+      setFocusedField('search');
+      
+      setTimeout(() => {
+        if (customerType === 'existing') {
+          searchInputRef.current?.focus();
+        }
+      }, 50);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (searchCustomer.length < 1 || customerType !== 'existing' || !isOpen) {
+      setShowDropdown(false);
+      setFilteredCustomers([]);
+      return;
+    }
+    
+    const timer = setTimeout(async () => {
+      try {
+        const response = await CustomerService.search(searchCustomer);
+        if (response?.success && Array.isArray(response.data)) {
+          const sorted = response.data.sort((a, b) => {
+            const searchLower = searchCustomer.toLowerCase();
+            const aName = a.name?.toLowerCase() || '';
+            const bName = b.name?.toLowerCase() || '';
+            const aMobile = a.mobile?.toLowerCase() || '';
+            const bMobile = b.mobile?.toLowerCase() || '';
+            const aCompany = a.company_name?.toLowerCase() || '';
+            const bCompany = b.company_name?.toLowerCase() || '';
+            
+            const score = (str) => {
+              if (str === searchLower) return 3;
+              if (str.startsWith(searchLower)) return 2;
+              if (str.includes(searchLower)) return 1;
+              return 0;
+            };
+            
+            const aScore = Math.max(score(aName), score(aMobile), score(aCompany));
+            const bScore = Math.max(score(bName), score(bMobile), score(bCompany));
+            
+            return bScore - aScore;
+          });
+          
+          setFilteredCustomers(sorted);
+          setShowDropdown(true);
+          setDropdownIndex(0);
+        } else {
+          setFilteredCustomers([]);
+          setShowDropdown(false);
+        }
+      } catch (error) {
+        console.error('Search customers error:', error);
+        setFilteredCustomers([]);
+        setShowDropdown(false);
+      }
+    }, 200);
+    
+    return () => clearTimeout(timer);
+  }, [searchCustomer, customerType, isOpen]);
+
+  const handleCreateCustomer = async () => {
+    const name = newCustomer.name?.trim();
+    const mobile = newCustomer.mobile?.trim();
+    const address = newCustomer.address?.trim();
+    
+    if (!name || !mobile || !address) {
+      toast.error('❌ Please fill required fields: Name, Mobile, Address');
+      return null;
+    }
+    
+    if (!/^07[01245678]\d{7}$/.test(mobile)) {
+      toast.error('❌ Invalid mobile format. Use: 07X XXX XXXX');
+      return null;
+    }
+    
+    try {
+      const response = await CustomerService.create({
+        customer_type: newCustomer.customer_type,
+        name,
+        company_name: newCustomer.company_name?.trim() || null,
+        mobile,
+        email: newCustomer.email?.trim() || null,
+        address,
+        city: newCustomer.city?.trim() || null,
+        nic_id: newCustomer.nic_id?.trim() || null
+      });
+      
+      if (response?.success && response.data) {
+        toast.success('✅ Customer created');
+        return response.data;
+      } else {
+        toast.error(response?.error || '❌ Failed to create customer');
+        return null;
+      }
+    } catch (error) {
+      console.error('Create customer error:', error);
+      toast.error('❌ Network error');
+      return null;
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (customerType === 'existing') {
+      if (!selectedCustomer || !selectedCustomer.id) {
+        toast.error('❌ Please select a customer');
+        return;
+      }
+      onConfirm({ customer: selectedCustomer, dueDate, notes: notes.trim() || null });
+      onClose();
+    } else {
+      const newCust = await handleCreateCustomer();
+      if (newCust) {
+        onConfirm({ customer: newCust, dueDate, notes: notes.trim() || null });
+        onClose();
+      }
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    // === SHORTCUT: Ctrl+Alt+E for Existing, Ctrl+Alt+N for New ===
+    // Using Ctrl+Alt to avoid browser conflicts (Ctrl+N opens new tab)
+    if (e.ctrlKey && e.altKey && !e.shiftKey && !e.metaKey) {
+      if (e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        setCustomerType('existing');
+        setFocusedField('search');
+        setTimeout(() => searchInputRef.current?.focus(), 10);
+        toast.success('👤 Existing customer (Ctrl+Alt+E)');
+        return;
+      }
+      if (e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        setCustomerType('new');
+        setFocusedField('customerType');
+        toast.success('🆕 New customer form (Ctrl+Alt+N)');
+        return;
+      }
+    }
+    
+    // === EXISTING CUSTOMER NAVIGATION ===
+    if (customerType === 'existing') {
+      if (showDropdown && filteredCustomers.length > 0) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setDropdownIndex(prev => Math.min(prev + 1, filteredCustomers.length - 1));
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setDropdownIndex(prev => Math.max(prev - 1, 0));
+        } else if (e.key === 'Enter' && dropdownIndex >= 0) {
+          e.preventDefault();
+          const cust = filteredCustomers[dropdownIndex];
+          if (cust?.id) {
+            setSelectedCustomer(cust);
+            setShowDropdown(false);
+            setSearchCustomer(`${cust.name}${cust.company_name ? ` - ${cust.company_name}` : ''}`);
+            setFocusedField('dueDate');
+            setTimeout(() => dueDateInputRef.current?.focus(), 10);
+            toast.success(`✓ Selected: ${cust.name}`);
+          }
+        }
+      }
+      
+      if (focusedField === 'search' && e.key === 'Enter' && selectedCustomer) {
+        e.preventDefault();
+        setFocusedField('dueDate');
+        setTimeout(() => dueDateInputRef.current?.focus(), 10);
+      } else if (focusedField === 'dueDate' && e.key === 'Enter') {
+        e.preventDefault();
+        setFocusedField('notes');
+        setTimeout(() => notesInputRef.current?.focus(), 10);
+      } else if (focusedField === 'notes' && e.key === 'Enter') {
+        e.preventDefault();
+        handleConfirm();
+      }
+      
+      if (e.target === searchInputRef.current) {
+        if (e.key === 'ArrowDown' && filteredCustomers.length > 0) {
+          e.preventDefault();
+          setShowDropdown(true);
+          setDropdownIndex(0);
+        }
+      }
+    }
+    
+    // === NEW CUSTOMER FORM NAVIGATION ===
+    if (customerType === 'new') {
+      const fieldOrder = ['customerType', 'name', 'mobile', 'email', 'address', 'city', 'dueDate', 'notes', 'create'];
+      const currentIndex = fieldOrder.indexOf(focusedField);
+      
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        if (focusedField === 'city' && !newCustomer.city?.trim()) {
+          e.preventDefault();
+          setFocusedField('dueDate');
+          setTimeout(() => newCustomerRefs.current['dueDate']?.focus(), 10);
+          return;
+        }
+        
+        if (currentIndex < fieldOrder.length - 1) {
+          e.preventDefault();
+          const nextField = fieldOrder[currentIndex + 1];
+          setFocusedField(nextField);
+          
+          if (nextField === 'create') {
+            handleConfirm();
+          } else if (nextField !== 'customerType') {
+            setTimeout(() => newCustomerRefs.current[nextField]?.focus(), 10);
+          }
+        }
+      }
+      
+      if (focusedField === 'customerType' && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+        e.preventDefault();
+        const types = ['individual', 'company'];
+        const currentIdx = types.indexOf(newCustomer.customer_type);
+        const direction = e.key === 'ArrowDown' ? 1 : -1;
+        const newIdx = (currentIdx + direction + types.length) % types.length;
+        setNewCustomer({...newCustomer, customer_type: types[newIdx]});
+      }
+    }
+    
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      onClose();
+    }
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    if (customerType === 'existing') {
+      if (focusedField === 'search') searchInputRef.current?.focus();
+      else if (focusedField === 'dueDate') dueDateInputRef.current?.focus();
+      else if (focusedField === 'notes') notesInputRef.current?.focus();
+    } else {
+      const field = focusedField;
+      if (field && field !== 'create') {
+        setTimeout(() => newCustomerRefs.current[field]?.focus(), 10);
+      }
+    }
+  }, [focusedField, customerType, isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" 
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="credit-modal-title"
+    >
+      <div 
+        ref={modalRef}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl border border-gray-200 overflow-hidden animate-in fade-in zoom-in duration-200 outline-none"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
+        tabIndex={-1}
+      >
+        {/* Modal Header */}
+        <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white text-xl">
+              📝
+            </div>
+            <div>
+              <h3 id="credit-modal-title" className="text-lg font-bold text-white">Credit Billing</h3>
+              <p className="text-xs text-white/80">⌨️ Ctrl+Alt+E=Existing, Ctrl+Alt+N=New • Enter to navigate • ESC to cancel</p>
+            </div>
+          </div>
+          <button 
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+            aria-label="Close modal"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Modal Body */}
+        <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+          {/* Customer Type Toggle with Keyboard Hints */}
+          <div className="flex gap-3">
+            <label className={`flex-1 cursor-pointer rounded-xl border-2 p-4 transition-all ${
+              customerType === 'existing'
+                ? 'border-purple-500 bg-purple-50 shadow-lg shadow-purple-500/10 ring-2 ring-purple-200'
+                : 'border-gray-200 hover:border-gray-300'
+            }`}>
+              <input
+                type="radio"
+                value="existing"
+                checked={customerType === 'existing'}
+                onChange={(e) => {
+                  setCustomerType(e.target.value);
+                  setSelectedCustomer(null);
+                  setSearchCustomer('');
+                  setShowDropdown(false);
+                  setFocusedField('search');
+                }}
+                className="sr-only"
+              />
+              <div className="flex items-center gap-3">
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                  customerType === 'existing' ? 'border-purple-500 bg-purple-500' : 'border-gray-400'
+                }`}>
+                  {customerType === 'existing' && <div className="w-2.5 h-2.5 rounded-full bg-white"></div>}
+                </div>
+                <div>
+                  <span className="font-bold text-gray-900">Existing Customer</span>
+                  <p className="text-xs text-gray-500">Press <kbd className="px-1.5 py-0.5 bg-gray-200 rounded text-xs font-mono">Ctrl+Alt+E</kbd></p>
+                </div>
+              </div>
+            </label>
+            
+            <label className={`flex-1 cursor-pointer rounded-xl border-2 p-4 transition-all ${
+              customerType === 'new'
+                ? 'border-purple-500 bg-purple-50 shadow-lg shadow-purple-500/10 ring-2 ring-purple-200'
+                : 'border-gray-200 hover:border-gray-300'
+            }`}>
+              <input
+                type="radio"
+                value="new"
+                checked={customerType === 'new'}
+                onChange={(e) => {
+                  setCustomerType(e.target.value);
+                  setSelectedCustomer(null);
+                  setFocusedField('customerType');
+                }}
+                className="sr-only"
+              />
+              <div className="flex items-center gap-3">
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                  customerType === 'new' ? 'border-purple-500 bg-purple-500' : 'border-gray-400'
+                }`}>
+                  {customerType === 'new' && <div className="w-2.5 h-2.5 rounded-full bg-white"></div>}
+                </div>
+                <div>
+                  <span className="font-bold text-gray-900">New Customer</span>
+                  <p className="text-xs text-gray-500">Press <kbd className="px-1.5 py-0.5 bg-gray-200 rounded text-xs font-mono">Ctrl+Alt+N</kbd></p>
+                </div>
+              </div>
+            </label>
+          </div>
+
+          {/* EXISTING CUSTOMER SECTION */}
+          {customerType === 'existing' && (
+            <div className="space-y-4">
+              <div className={`p-4 rounded-xl border-2 transition-all ${focusedField === 'search' ? 'border-purple-500 bg-purple-50/30 ring-2 ring-purple-200' : 'border-gray-200 bg-gray-50'}`}>
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  Search Customer <span className="text-red-500">*</span>
+                  {focusedField === 'search' && <span className="text-xs text-purple-600 font-normal">← Type to search • ↓ to select</span>}
+                </label>
+                <div className="relative">
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchCustomer}
+                    onChange={(e) => {
+                      setSearchCustomer(e.target.value);
+                      setShowDropdown(true);
+                    }}
+                    onFocus={() => {
+                      setFocusedField('search');
+                      if (searchCustomer.length >= 1) setShowDropdown(true);
+                    }}
+                    placeholder="Start typing name, mobile, or company..."
+                    className={`w-full pl-10 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${
+                      focusedField === 'search' ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-200'
+                    }`}
+                    aria-label="Search existing customer"
+                  />
+                  <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                
+                {showDropdown && searchCustomer.length >= 1 && filteredCustomers.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border-2 border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                    {filteredCustomers.map((customer, index) => (
+                      <button
+                        key={customer?.id || index}
+                        onClick={() => {
+                          if (customer?.id) {
+                            setSelectedCustomer(customer);
+                            setShowDropdown(false);
+                            setSearchCustomer(`${customer.name}${customer.company_name ? ` - ${customer.company_name}` : ''}`);
+                            setFocusedField('dueDate');
+                            setTimeout(() => dueDateInputRef.current?.focus(), 10);
+                            toast.success(`✓ Selected: ${customer.name}`);
+                          }
+                        }}
+                        className={`w-full text-left px-4 py-3 border-b border-gray-100 last:border-0 transition-all hover:bg-purple-50 ${
+                          index === dropdownIndex ? 'bg-purple-100 border-l-4 border-l-purple-600' : ''
+                        }`}
+                        onMouseEnter={() => setDropdownIndex(index)}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className={`font-bold text-sm ${index === dropdownIndex ? 'text-purple-700' : 'text-gray-900'}`}>
+                              {customer?.name || 'N/A'}
+                              {index === 0 && searchCustomer.length > 2 && (
+                                <span className="ml-2 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">✓ Exact</span>
+                              )}
+                            </p>
+                            {customer?.company_name && (
+                              <p className="text-xs text-gray-600">{customer.company_name}</p>
+                            )}
+                            <p className="text-xs text-gray-500 mt-0.5">📞 {customer?.mobile || 'N/A'}</p>
+                          </div>
+                          {(customer?.outstanding_balance || 0) > 0 && (
+                            <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded">
+                              Outstanding: {formatLKR(customer.outstanding_balance)}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                
+                {searchCustomer.length >= 1 && filteredCustomers.length === 0 && (
+                  <p className="text-xs text-gray-500 mt-2">No customers found. Try different search or create new.</p>
+                )}
+              </div>
+              
+              {selectedCustomer && (
+                <div className="p-4 bg-purple-50 border-2 border-purple-200 rounded-xl">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="font-bold text-purple-900">{selectedCustomer?.name || 'N/A'}</p>
+                      {selectedCustomer?.company_name && (
+                        <p className="text-sm text-purple-700">{selectedCustomer.company_name}</p>
+                      )}
+                      <p className="text-sm text-purple-600 mt-1">📞 {selectedCustomer?.mobile || 'N/A'}</p>
+                      <p className="text-sm text-purple-600">📍 {selectedCustomer?.address || 'N/A'}{selectedCustomer?.city ? `, ${selectedCustomer.city}` : ''}</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSelectedCustomer(null);
+                        setSearchCustomer('');
+                        setFocusedField('search');
+                        searchInputRef.current?.focus();
+                      }}
+                      className="text-red-500 hover:text-red-700 text-sm font-medium"
+                    >
+                      Change
+                    </button>
+                  </div>
+                  {(selectedCustomer?.outstanding_balance || 0) > 0 && (
+                    <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-xs font-bold text-red-700">
+                        ⚠️ Previous Outstanding: {formatLKR(selectedCustomer.outstanding_balance)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              <div className={`p-4 rounded-xl border-2 transition-all ${focusedField === 'dueDate' ? 'border-purple-500 bg-purple-50/30 ring-2 ring-purple-200' : 'border-gray-200 bg-gray-50'}`}>
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  Due Date <span className="text-red-500">*</span>
+                  {focusedField === 'dueDate' && <span className="text-xs text-purple-600 font-normal">← Active • Enter for Notes</span>}
+                </label>
+                <input
+                  ref={dueDateInputRef}
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  onFocus={() => setFocusedField('dueDate')}
+                  min={new Date().toISOString().slice(0, 10)}
+                  className={`w-full px-4 py-2.5 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium transition-all ${
+                    focusedField === 'dueDate' ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-200'
+                  }`}
+                  aria-label="Due date for credit bill"
+                />
+              </div>
+              
+              <div className={`p-4 rounded-xl border-2 transition-all ${focusedField === 'notes' ? 'border-purple-500 bg-purple-50/30 ring-2 ring-purple-200' : 'border-gray-200 bg-gray-50'}`}>
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  Notes (Optional)
+                  {focusedField === 'notes' && <span className="text-xs text-purple-600 font-normal">← Active • Enter to Create Bill</span>}
+                </label>
+                <textarea
+                  ref={notesInputRef}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  onFocus={() => setFocusedField('notes')}
+                  className={`w-full px-4 py-2.5 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${
+                    focusedField === 'notes' ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-200'
+                  }`}
+                  rows={2}
+                  placeholder="Additional notes about this credit bill..."
+                  aria-label="Notes for credit bill"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* NEW CUSTOMER FORM */}
+          {customerType === 'new' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className={`col-span-2 p-4 rounded-xl border-2 transition-all ${focusedField === 'customerType' ? 'border-purple-500 bg-purple-50/30 ring-2 ring-purple-200' : 'border-gray-200 bg-gray-50'}`}>
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  Customer Type
+                  {focusedField === 'customerType' && <span className="text-xs text-purple-600 font-normal">← ↑↓ to change • Enter for Name</span>}
+                </label>
+                <select
+                  ref={el => newCustomerRefs.current['customerType'] = el}
+                  value={newCustomer.customer_type}
+                  onChange={(e) => setNewCustomer({...newCustomer, customer_type: e.target.value})}
+                  onFocus={() => setFocusedField('customerType')}
+                  className={`w-full px-4 py-2.5 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${
+                    focusedField === 'customerType' ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-200'
+                  }`}
+                  aria-label="Customer type selection"
+                >
+                  <option value="individual">👤 Individual</option>
+                  <option value="company">🏢 Company</option>
+                </select>
+              </div>
+              
+              <div className={`col-span-2 p-4 rounded-xl border-2 transition-all ${focusedField === 'name' ? 'border-purple-500 bg-purple-50/30 ring-2 ring-purple-200' : 'border-gray-200 bg-gray-50'}`}>
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  Full Name <span className="text-red-500">*</span>
+                  {focusedField === 'name' && <span className="text-xs text-purple-600 font-normal">← Active • Enter for Mobile</span>}
+                </label>
+                <input
+                  ref={el => newCustomerRefs.current['name'] = el}
+                  type="text"
+                  value={newCustomer.name}
+                  onChange={(e) => setNewCustomer({...newCustomer, name: e.target.value})}
+                  onFocus={() => setFocusedField('name')}
+                  className={`w-full px-4 py-2.5 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${
+                    focusedField === 'name' ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-200'
+                  }`}
+                  placeholder="Enter full name"
+                  aria-label="Customer full name"
+                />
+              </div>
+              
+              {newCustomer.customer_type === 'company' && (
+                <div className="col-span-2 p-4 rounded-xl border-2 border-gray-200 bg-gray-50">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Company Name</label>
+                  <input
+                    ref={el => newCustomerRefs.current['company_name'] = el}
+                    type="text"
+                    value={newCustomer.company_name}
+                    onChange={(e) => setNewCustomer({...newCustomer, company_name: e.target.value})}
+                    className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Enter company name"
+                  />
+                </div>
+              )}
+              
+              <div className={`p-4 rounded-xl border-2 transition-all ${focusedField === 'mobile' ? 'border-purple-500 bg-purple-50/30 ring-2 ring-purple-200' : 'border-gray-200 bg-gray-50'}`}>
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  Mobile <span className="text-red-500">*</span>
+                  {focusedField === 'mobile' && <span className="text-xs text-purple-600 font-normal">← Active • Enter for Email</span>}
+                </label>
+                <input
+                  ref={el => newCustomerRefs.current['mobile'] = el}
+                  type="tel"
+                  value={newCustomer.mobile}
+                  onChange={(e) => setNewCustomer({...newCustomer, mobile: e.target.value})}
+                  onFocus={() => setFocusedField('mobile')}
+                  className={`w-full px-4 py-2.5 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${
+                    focusedField === 'mobile' ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-200'
+                  }`}
+                  placeholder="07X XXX XXXX"
+                  aria-label="Customer mobile number"
+                />
+              </div>
+              
+              <div className={`p-4 rounded-xl border-2 transition-all ${focusedField === 'email' ? 'border-purple-500 bg-purple-50/30 ring-2 ring-purple-200' : 'border-gray-200 bg-gray-50'}`}>
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  Email (Optional)
+                  {focusedField === 'email' && <span className="text-xs text-purple-600 font-normal">← Active • Enter for Address</span>}
+                </label>
+                <input
+                  ref={el => newCustomerRefs.current['email'] = el}
+                  type="email"
+                  value={newCustomer.email}
+                  onChange={(e) => setNewCustomer({...newCustomer, email: e.target.value})}
+                  onFocus={() => setFocusedField('email')}
+                  className={`w-full px-4 py-2.5 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${
+                    focusedField === 'email' ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-200'
+                  }`}
+                  placeholder="email@example.com"
+                  aria-label="Customer email"
+                />
+              </div>
+              
+              <div className={`col-span-2 p-4 rounded-xl border-2 transition-all ${focusedField === 'address' ? 'border-purple-500 bg-purple-50/30 ring-2 ring-purple-200' : 'border-gray-200 bg-gray-50'}`}>
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  Address <span className="text-red-500">*</span>
+                  {focusedField === 'address' && <span className="text-xs text-purple-600 font-normal">← Active • Enter for City</span>}
+                </label>
+                <textarea
+                  ref={el => newCustomerRefs.current['address'] = el}
+                  value={newCustomer.address}
+                  onChange={(e) => setNewCustomer({...newCustomer, address: e.target.value})}
+                  onFocus={() => setFocusedField('address')}
+                  className={`w-full px-4 py-2.5 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${
+                    focusedField === 'address' ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-200'
+                  }`}
+                  rows={2}
+                  placeholder="Street address, area"
+                  aria-label="Customer address"
+                />
+              </div>
+              
+              <div className={`p-4 rounded-xl border-2 transition-all ${focusedField === 'city' ? 'border-purple-500 bg-purple-50/30 ring-2 ring-purple-200' : 'border-gray-200 bg-gray-50'}`}>
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  City <span className="text-xs text-gray-400 font-normal">(Optional)</span>
+                  {focusedField === 'city' && <span className="text-xs text-purple-600 font-normal">← Active • Enter for Due Date</span>}
+                </label>
+                <input
+                  ref={el => newCustomerRefs.current['city'] = el}
+                  type="text"
+                  value={newCustomer.city}
+                  onChange={(e) => setNewCustomer({...newCustomer, city: e.target.value})}
+                  onFocus={() => setFocusedField('city')}
+                  className={`w-full px-4 py-2.5 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${
+                    focusedField === 'city' ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-200'
+                  }`}
+                  placeholder="City (optional)"
+                  aria-label="Customer city (optional)"
+                />
+                <p className="text-xs text-gray-400 mt-1">Press Enter to skip if not needed</p>
+              </div>
+              
+              <div className={`p-4 rounded-xl border-2 transition-all ${focusedField === 'dueDate' ? 'border-purple-500 bg-purple-50/30 ring-2 ring-purple-200' : 'border-gray-200 bg-gray-50'}`}>
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  Due Date <span className="text-red-500">*</span>
+                  {focusedField === 'dueDate' && <span className="text-xs text-purple-600 font-normal">← Active • Enter for Notes</span>}
+                </label>
+                <input
+                  ref={el => newCustomerRefs.current['dueDate'] = el}
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  onFocus={() => setFocusedField('dueDate')}
+                  min={new Date().toISOString().slice(0, 10)}
+                  className={`w-full px-4 py-2.5 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium transition-all ${
+                    focusedField === 'dueDate' ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-200'
+                  }`}
+                  aria-label="Due date for credit bill"
+                />
+              </div>
+              
+              <div className={`col-span-2 p-4 rounded-xl border-2 transition-all ${focusedField === 'notes' ? 'border-purple-500 bg-purple-50/30 ring-2 ring-purple-200' : 'border-gray-200 bg-gray-50'}`}>
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  Notes (Optional)
+                  {focusedField === 'notes' && <span className="text-xs text-purple-600 font-normal">← Active • Enter to Create Bill</span>}
+                </label>
+                <textarea
+                  ref={el => newCustomerRefs.current['notes'] = el}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  onFocus={() => setFocusedField('notes')}
+                  className={`w-full px-4 py-2.5 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all ${
+                    focusedField === 'notes' ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-200'
+                  }`}
+                  rows={2}
+                  placeholder="Additional notes about this credit bill..."
+                  aria-label="Notes for credit bill"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Modal Footer */}
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-3 px-4 border-2 border-gray-300 hover:border-gray-400 text-gray-700 font-bold rounded-xl transition-all hover:bg-gray-100"
+          >
+            Cancel (ESC)
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={
+              (customerType === 'existing' && (!selectedCustomer || !selectedCustomer.id)) ||
+              (customerType === 'new' && (!newCustomer.name?.trim() || !newCustomer.mobile?.trim() || !newCustomer.address?.trim())) ||
+              !dueDate
+            }
+            className="flex-1 py-3 px-4 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            ✓ Create Credit Bill (Enter)
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const CashBilling = () => {
   const { user } = useAuth();
+  
+  const [paymentMethod, setPaymentMethod] = useState(null);
+  
+  const [customerType, setCustomerType] = useState('existing');
+  const [customers, setCustomers] = useState([]);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [searchCustomer, setSearchCustomer] = useState('');
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [customerSearchIndex, setCustomerSearchIndex] = useState(-1);
+  
+  const [newCustomer, setNewCustomer] = useState({
+    customer_type: 'individual',
+    name: '',
+    company_name: '',
+    mobile: '',
+    email: '',
+    address: '',
+    city: '',
+    nic_id: ''
+  });
+  
+  const [dueDate, setDueDate] = useState('');
+  const [creditNotes, setCreditNotes] = useState('');
+  
   const [cart, setCart] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
@@ -31,37 +1185,70 @@ const CashBilling = () => {
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
   const [processing, setProcessing] = useState(false);
   const [highlightRow, setHighlightRow] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState(null);
   const [barcodeScannerMode, setBarcodeScannerMode] = useState(false);
+  
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [pendingProduct, setPendingProduct] = useState(null);
+  const [showCreditModal, setShowCreditModal] = useState(false);
+  
+  const [selectedCartItemIndex, setSelectedCartItemIndex] = useState(-1);
   
   const searchInputRef = useRef(null);
   const cartContainerRef = useRef(null);
   const suggestionRefs = useRef([]);
+  const customerSuggestionRefs = useRef([]);
+  const cartItemRefs = useRef([]);
 
-  // ✅ FIX: Calculate totals with useMemo (runs after render, safe for hooks)
-  const totals = useMemo(() => {
-    let totalAmount = 0;
-    let totalDiscount = 0;
-    
-    cart.forEach(item => {
-      const itemTotal = item.unit_price * item.quantity;
-      const itemDiscount = item.discount_lkr * item.quantity;
-      totalAmount += itemTotal;
-      totalDiscount += itemDiscount;
-    });
-    
-    return {
-      totalAmount,
-      totalDiscount,
-      grandTotal: Math.max(0, totalAmount - totalDiscount),
-      itemCount: cart.reduce((sum, item) => sum + item.quantity, 0)
-    };
-  }, [cart]);
-  
-  // Destructure AFTER useMemo (safe now)
-  const { totalAmount, totalDiscount, grandTotal, itemCount } = totals;
+  useEffect(() => {
+    searchInputRef.current?.focus();
+  }, []);
 
-  // 🔍 Debounced product search
+  useEffect(() => {
+    fetchCustomers();
+    const defaultDue = new Date();
+    defaultDue.setDate(defaultDue.getDate() + 30);
+    setDueDate(defaultDue.toISOString().slice(0, 10));
+  }, []);
+
+  const fetchCustomers = async () => {
+    try {
+      const response = await CustomerService.getAll();
+      if (response?.success && Array.isArray(response.data)) {
+        setCustomers(response.data);
+      }
+    } catch (error) {
+      console.error('Fetch customers error:', error);
+      setCustomers([]);
+    }
+  };
+
+  useEffect(() => {
+    if (searchCustomer.length < 2 || customerType === 'new' || paymentMethod !== 'CREDIT') {
+      setShowCustomerDropdown(false);
+      return;
+    }
+    
+    const timer = setTimeout(async () => {
+      try {
+        const response = await CustomerService.search(searchCustomer);
+        if (response?.success && Array.isArray(response.data)) {
+          setCustomers(response.data);
+          setShowCustomerDropdown(true);
+          setCustomerSearchIndex(response.data.length > 0 ? 0 : -1);
+        } else {
+          setCustomers([]);
+          setShowCustomerDropdown(false);
+        }
+      } catch (error) {
+        console.error('Search customers error:', error);
+        setCustomers([]);
+        setShowCustomerDropdown(false);
+      }
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [searchCustomer, customerType, paymentMethod]);
+
   useEffect(() => {
     if (barcodeScannerMode) return;
     
@@ -75,23 +1262,114 @@ const CashBilling = () => {
       
       try {
         const response = await ProductService.getAll({ search: searchQuery });
-        if (response.success) {
+        if (response?.success && Array.isArray(response.data)) {
           const filtered = response.data.filter(p => p.stock_quantity > 0).slice(0, 8);
           setSuggestions(filtered);
           setShowSuggestions(true);
           setSelectedSuggestionIndex(filtered.length > 0 ? 0 : -1);
+        } else {
+          setSuggestions([]);
+          setShowSuggestions(false);
         }
       } catch (error) {
         console.error('Search error:', error);
+        setSuggestions([]);
+        setShowSuggestions(false);
       }
     }, 300);
     
     return () => clearTimeout(timer);
   }, [searchQuery, barcodeScannerMode]);
 
-  // 🎯 Keyboard Navigation for Suggestions
+  const totals = useMemo(() => {
+    let totalAmount = 0;
+    let totalDiscount = 0;
+    
+    if (!Array.isArray(cart)) return { totalAmount: 0, totalDiscount: 0, grandTotal: 0, itemCount: 0 };
+    
+    cart.forEach(item => {
+      const itemTotal = (item.unit_price || 0) * (item.quantity || 0);
+      const itemDiscount = (item.discount_lkr || 0) * (item.quantity || 0);
+      totalAmount += itemTotal;
+      totalDiscount += itemDiscount;
+    });
+    
+    return {
+      totalAmount,
+      totalDiscount,
+      grandTotal: Math.max(0, totalAmount - totalDiscount),
+      itemCount: cart.reduce((sum, item) => sum + (item.quantity || 0), 0)
+    };
+  }, [cart]);
+  
+  const { totalAmount, totalDiscount, grandTotal, itemCount } = totals;
+
+  // 🎯 GLOBAL KEYBOARD NAVIGATION - UPDATED WITH Ctrl+Alt SHORTCUTS
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // === PAYMENT METHOD SHORTCUTS: Ctrl+1=Cash, Ctrl+2=Card, Ctrl+3=Credit ===
+      if (!showProductModal && !showCreditModal && !showSuggestions) {
+        if (e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey) {
+          if (e.key === '1') {
+            e.preventDefault();
+            setPaymentMethod('CASH');
+            setSelectedCustomer(null);
+            toast.success('💵 Cash selected (Ctrl+1)');
+            return;
+          }
+          if (e.key === '2') {
+            e.preventDefault();
+            setPaymentMethod('CARD');
+            setSelectedCustomer(null);
+            toast.success('💳 Card selected (Ctrl+2)');
+            return;
+          }
+          if (e.key === '3') {
+            e.preventDefault();
+            setPaymentMethod('CREDIT');
+            setSelectedCustomer(null);
+            setSearchCustomer('');
+            toast.success('📝 Credit selected (Ctrl+3)');
+            return;
+          }
+        }
+      }
+      
+      // === CART KEYBOARD NAVIGATION ===
+      if (Array.isArray(cart) && cart.length > 0 && !showProductModal && !showCreditModal && !showSuggestions) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setSelectedCartItemIndex(prev => {
+            const next = prev < cart.length - 1 ? prev + 1 : prev;
+            cartItemRefs.current[next]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            return next;
+          });
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setSelectedCartItemIndex(prev => {
+            const next = prev > 0 ? prev - 1 : prev;
+            cartItemRefs.current[next]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            return next;
+          });
+        } else if (e.key === 'Backspace' && selectedCartItemIndex >= 0) {
+          e.preventDefault();
+          const item = cart[selectedCartItemIndex];
+          if (item?.product_id && window.confirm(`🗑️ Remove "${item.product_name}" from cart?`)) {
+            removeFromCart(item.product_id);
+            setSelectedCartItemIndex(prev => Math.max(0, prev - 1));
+            toast.success('✓ Item removed');
+          }
+        } else if (e.key === 'Delete' && selectedCartItemIndex >= 0) {
+          e.preventDefault();
+          const item = cart[selectedCartItemIndex];
+          if (item?.product_id && window.confirm(`🗑️ Remove "${item.product_name}" from cart?`)) {
+            removeFromCart(item.product_id);
+            setSelectedCartItemIndex(prev => Math.max(0, prev - 1));
+            toast.success('✓ Item removed');
+          }
+        }
+      }
+      
       // Global shortcuts
       if (e.key === 'F2') {
         e.preventDefault();
@@ -104,99 +1382,162 @@ const CashBilling = () => {
         handleCheckout();
       }
       
-      // Suggestion navigation
-      if (!showSuggestions || suggestions.length === 0) return;
-      
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setSelectedSuggestionIndex(prev => {
-          const next = prev < suggestions.length - 1 ? prev + 1 : prev;
-          suggestionRefs.current[next]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-          return next;
-        });
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setSelectedSuggestionIndex(prev => {
-          const next = prev > 0 ? prev - 1 : prev;
-          suggestionRefs.current[next]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-          return next;
-        });
-      } else if (e.key === 'Enter' && selectedSuggestionIndex >= 0) {
-        e.preventDefault();
-        if (suggestions[selectedSuggestionIndex]) {
-          addToCart(suggestions[selectedSuggestionIndex]);
+      // Customer dropdown navigation (credit only)
+      if (paymentMethod === 'CREDIT' && showCustomerDropdown && Array.isArray(customers) && customers.length > 0 && customerType === 'existing') {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setCustomerSearchIndex(prev => {
+            const next = prev < customers.length - 1 ? prev + 1 : prev;
+            customerSuggestionRefs.current[next]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            return next;
+          });
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setCustomerSearchIndex(prev => {
+            const next = prev > 0 ? prev - 1 : prev;
+            customerSuggestionRefs.current[next]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            return next;
+          });
+        } else if (e.key === 'Enter' && customerSearchIndex >= 0 && !showSuggestions && !showProductModal && !showCreditModal) {
+          e.preventDefault();
+          if (customers[customerSearchIndex]?.id) {
+            const cust = customers[customerSearchIndex];
+            setSelectedCustomer(cust);
+            setShowCustomerDropdown(false);
+            setSearchCustomer(`${cust.name}${cust.company_name ? ` - ${cust.company_name}` : ''}`);
+            toast.success(`✓ Selected: ${cust.name}`);
+          }
         }
-      } else if (e.key === 'Escape') {
+      }
+      
+      // Product suggestions navigation
+      if (showSuggestions && Array.isArray(suggestions) && suggestions.length > 0 && !showProductModal && !showCreditModal) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setSelectedSuggestionIndex(prev => {
+            const next = prev < suggestions.length - 1 ? prev + 1 : prev;
+            suggestionRefs.current[next]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            return next;
+          });
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setSelectedSuggestionIndex(prev => {
+            const next = prev > 0 ? prev - 1 : prev;
+            suggestionRefs.current[next]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            return next;
+          });
+        } else if (e.key === 'Enter' && selectedSuggestionIndex >= 0) {
+          e.preventDefault();
+          if (suggestions[selectedSuggestionIndex]) {
+            handleProductSelect(suggestions[selectedSuggestionIndex]);
+          }
+        }
+      }
+      
+      // ESC to close dropdowns/modals
+      if (e.key === 'Escape') {
         e.preventDefault();
         setShowSuggestions(false);
+        setShowCustomerDropdown(false);
         setSelectedSuggestionIndex(-1);
+        setCustomerSearchIndex(-1);
+        setSelectedCartItemIndex(-1);
+        if (showProductModal) {
+          setShowProductModal(false);
+          setPendingProduct(null);
+        }
+        if (showCreditModal) {
+          setShowCreditModal(false);
+        }
         if (!barcodeScannerMode) {
           setSearchQuery('');
         }
-        searchInputRef.current?.blur();
+        searchInputRef.current?.focus();
       }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showSuggestions, suggestions, selectedSuggestionIndex, barcodeScannerMode, cart, paymentMethod]);
-  // ✅ FIX: Removed grandTotal from deps since it's derived from cart
+  }, [
+    showCustomerDropdown, showSuggestions, suggestions, customers, 
+    selectedSuggestionIndex, customerSearchIndex, barcodeScannerMode, 
+    cart, paymentMethod, showProductModal, showCreditModal,
+    selectedCartItemIndex
+  ]);
 
-  // 🛒 Add product to cart
-  const addToCart = useCallback((product) => {
-    if (!product) return;
+  const handleProductSelect = useCallback((product) => {
+    if (!product || !product.id) return;
     
-    if (product.stock_quantity <= 0) {
+    if ((product.stock_quantity || 0) <= 0) {
       toast.error(`❌ Out of stock: ${product.item_name}`);
       return;
     }
     
-    setCart(prev => {
-      const existing = prev.find(item => item.product_id === product.id);
-      if (existing) {
-        const newQty = existing.quantity + 1;
-        if (newQty > product.stock_quantity) {
-          toast.error(`⚠️ Max stock reached: ${product.stock_quantity}`);
-          return prev;
-        }
-        return prev.map(item =>
-          item.product_id === product.id ? { ...item, quantity: newQty } : item
-        );
-      }
-      
-      const autoDiscount = product.discount_type === 'percent'
-        ? product.selling_price * product.discount_value / 100
-        : product.discount_value;
-      
-      return [...prev, {
-        product_id: product.id,
-        product_name: product.item_name,
-        barcode: product.barcode,
-        short_form: product.short_form,
-        unit_price: product.selling_price,
-        quantity: 1,
-        max_stock: product.stock_quantity,
-        discount_mode: 'default',
-        discount_value: product.discount_value || 0,
-        discount_type: product.discount_type || 'fixed',
-        auto_discount_lkr: autoDiscount,
-        discount_lkr: autoDiscount
-      }];
-    });
-    
-    playScanSound();
-    setHighlightRow(product.id);
-    setTimeout(() => setHighlightRow(null), 800);
-    setSearchQuery('');
+    setPendingProduct(product);
+    setShowProductModal(true);
     setShowSuggestions(false);
     setSelectedSuggestionIndex(-1);
+    setSearchQuery('');
     
     if (!barcodeScannerMode) {
       searchInputRef.current?.focus();
     }
   }, [barcodeScannerMode]);
 
-  // 📦 Handle barcode scan / Enter key
+  const confirmAddToCart = useCallback((modalData) => {
+    if (!pendingProduct || !pendingProduct.id) return;
+    
+    const product = pendingProduct;
+    const { quantity, discountMode, discountValue, discountType, discountLKR } = modalData;
+    
+    setCart(prev => {
+      const safePrev = Array.isArray(prev) ? prev : [];
+      const existing = safePrev.find(item => item.product_id === product.id);
+      
+      if (existing) {
+        const newQty = (existing.quantity || 0) + quantity;
+        if (newQty > (product.stock_quantity || 0)) {
+          toast.error(`⚠️ Max stock: ${product.stock_quantity}`);
+          return prev;
+        }
+        return safePrev.map(item =>
+          item.product_id === product.id ? { ...item, quantity: newQty } : item
+        );
+      }
+      
+      return [...safePrev, {
+        product_id: product.id,
+        product_name: product.item_name || '',
+        barcode: product.barcode || '',
+        short_form: product.short_form || '',
+        unit_price: product.selling_price || 0,
+        quantity: quantity,
+        max_stock: product.stock_quantity || 0,
+        discount_mode: discountMode,
+        discount_value: discountValue,
+        discount_type: discountType,
+        auto_discount_lkr: discountMode === 'default' 
+          ? (product.discount_type === 'percent'
+              ? (product.selling_price || 0) * (product.discount_value || 0) / 100
+              : (product.discount_value || 0))
+          : 0,
+        discount_lkr: discountLKR
+      }];
+    });
+    
+    playScanSound();
+    setHighlightRow(product.id);
+    setTimeout(() => setHighlightRow(null), 800);
+    
+    toast.success(`✓ Added: ${product.item_name} × ${quantity}`);
+    setPendingProduct(null);
+    setShowProductModal(false);
+    
+    if (!barcodeScannerMode) {
+      searchInputRef.current?.focus();
+    }
+  }, [pendingProduct, barcodeScannerMode]);
+
   const handleSearchSubmit = async (e) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
@@ -204,13 +1545,10 @@ const CashBilling = () => {
     if (barcodeScannerMode) {
       try {
         const response = await ProductService.getAll({ search: searchQuery.trim() });
-        if (response.success && response.data.length > 0) {
-          const exactMatch = response.data.find(p => 
-            p.barcode === searchQuery.trim() || 
-            p.short_form?.toUpperCase() === searchQuery.trim().toUpperCase()
-          );
+        if (response?.success && Array.isArray(response.data) && response.data.length > 0) {
+          const exactMatch = response.data.find(p => p.barcode === searchQuery.trim());
           if (exactMatch) {
-            addToCart(exactMatch);
+            handleProductSelect(exactMatch);
             setSearchQuery('');
             return;
           }
@@ -226,26 +1564,27 @@ const CashBilling = () => {
     
     try {
       const response = await ProductService.getAll({ search: searchQuery.trim() });
-      if (response.success && response.data.length > 0) {
-        const exactMatch = response.data.find(p => 
-          p.barcode === searchQuery.trim() || 
-          p.short_form?.toUpperCase() === searchQuery.trim().toUpperCase()
-        );
+      if (response?.success && Array.isArray(response.data) && response.data.length > 0) {
+        const exactMatch = response.data.find(p => p.barcode === searchQuery.trim());
         if (exactMatch) {
-          addToCart(exactMatch);
+          handleProductSelect(exactMatch);
           return;
         }
       }
     } catch (error) {
-      console.error('Barcode lookup error:', error);
+      console.error('Lookup error:', error);
     }
     
-    if (suggestions.length > 0) {
-      addToCart(suggestions[selectedSuggestionIndex >= 0 ? selectedSuggestionIndex : 0]);
+    if (Array.isArray(suggestions) && suggestions.length > 0) {
+      const index = selectedSuggestionIndex >= 0 && selectedSuggestionIndex < suggestions.length 
+        ? selectedSuggestionIndex 
+        : 0;
+      if (suggestions[index]) {
+        handleProductSelect(suggestions[index]);
+      }
     }
   };
 
-  // Handle input change with barcode scanner mode check
   const handleSearchChange = (e) => {
     if (barcodeScannerMode) {
       const value = e.target.value;
@@ -259,134 +1598,131 @@ const CashBilling = () => {
     }
   };
 
-  // 🔄 Update cart item fields
   const updateCartItem = (productId, field, value) => {
-    setCart(prev => prev.map(item => {
-      if (item.product_id !== productId) return item;
-      
-      let updated = { ...item };
-      
-      if (field === 'quantity') {
-        const qty = parseInt(value) || 0;
-        if (qty <= 0) {
-          toast.error('⚠️ Quantity must be at least 1');
-          return item;
-        }
-        if (qty > item.max_stock) {
-          toast.error(`⚠️ Max stock: ${item.max_stock}`);
-          return item;
-        }
-        updated.quantity = qty;
-      } else if (field === 'discount_mode') {
-        updated.discount_mode = value;
-        if (value === 'default') {
-          updated.discount_lkr = item.auto_discount_lkr;
-          updated.discount_value = item.discount_value;
-          updated.discount_type = item.discount_type;
-        } else if (value === 'percent') {
-          updated.discount_value = 0;
-          updated.discount_lkr = 0;
-          updated.discount_type = 'percent';
-        } else if (value === 'fixed') {
-          updated.discount_value = 0;
-          updated.discount_lkr = 0;
-          updated.discount_type = 'fixed';
-        }
-      } else if (field === 'discount_value') {
-        const val = parseFloat(value) || 0;
-        if (val < 0) {
-          toast.error('⚠️ Discount cannot be negative');
-          return item;
+    setCart(prev => {
+      if (!Array.isArray(prev)) return prev;
+      return prev.map(item => {
+        if (item.product_id !== productId) return item;
+        
+        let updated = { ...item };
+        
+        if (field === 'quantity') {
+          const qty = parseInt(value) || 0;
+          if (qty <= 0) {
+            toast.error('⚠️ Quantity must be at least 1');
+            return item;
+          }
+          if (qty > (item.max_stock || 0)) {
+            toast.error(`⚠️ Max stock: ${item.max_stock}`);
+            return item;
+          }
+          updated.quantity = qty;
+        } else if (field === 'discount_mode') {
+          updated.discount_mode = value;
+          if (value === 'default') {
+            updated.discount_lkr = item.auto_discount_lkr || 0;
+            updated.discount_value = item.discount_value || 0;
+            updated.discount_type = item.discount_type || 'fixed';
+          } else if (value === 'percent') {
+            updated.discount_value = 0;
+            updated.discount_lkr = 0;
+            updated.discount_type = 'percent';
+          } else if (value === 'fixed') {
+            updated.discount_value = 0;
+            updated.discount_lkr = 0;
+            updated.discount_type = 'fixed';
+          }
+        } else if (field === 'discount_value') {
+          const val = parseFloat(value) || 0;
+          if (val < 0) {
+            toast.error('⚠️ Discount cannot be negative');
+            return item;
+          }
+          
+          updated.discount_value = val;
+          
+          if (updated.discount_mode === 'percent') {
+            if (val > 100) {
+              toast.error('⚠️ Discount cannot exceed 100%');
+              updated.discount_value = 100;
+              updated.discount_lkr = item.unit_price || 0;
+            } else {
+              updated.discount_lkr = (item.unit_price || 0) * val / 100;
+            }
+          } else if (updated.discount_mode === 'fixed') {
+            if (val > (item.unit_price || 0)) {
+              toast.error('⚠️ Discount cannot exceed unit price');
+              updated.discount_value = item.unit_price || 0;
+              updated.discount_lkr = item.unit_price || 0;
+            } else {
+              updated.discount_lkr = val;
+            }
+          }
         }
         
-        updated.discount_value = val;
-        
-        if (updated.discount_mode === 'percent') {
-          if (val > 100) {
-            toast.error('⚠️ Discount cannot exceed 100%');
-            updated.discount_value = 100;
-            updated.discount_lkr = item.unit_price;
-          } else {
-            updated.discount_lkr = item.unit_price * val / 100;
-          }
-        } else if (updated.discount_mode === 'fixed') {
-          if (val > item.unit_price) {
-            toast.error('⚠️ Discount cannot exceed unit price');
-            updated.discount_value = item.unit_price;
-            updated.discount_lkr = item.unit_price;
-          } else {
-            updated.discount_lkr = val;
-          }
-        }
-      }
-      
-      return updated;
-    }));
+        return updated;
+      });
+    });
   };
 
-  // 🗑️ Remove from cart
   const removeFromCart = (productId) => {
-    setCart(prev => prev.filter(item => item.product_id !== productId));
+    setCart(prev => Array.isArray(prev) ? prev.filter(item => item.product_id !== productId) : []);
   };
 
-  // 🧹 Clear cart
   const clearCart = () => {
-    if (cart.length === 0) return;
+    if (!Array.isArray(cart) || cart.length === 0) return;
     if (window.confirm('🗑️ Clear all items from cart?')) {
       setCart([]);
       setPaymentMethod(null);
+      setSelectedCustomer(null);
+      setSelectedCartItemIndex(-1);
       toast.success('Cart cleared');
     }
   };
 
-  // 🖨️ Print Bill & Save to DB
-  const handleCheckout = async () => {
-    if (cart.length === 0) {
-      toast.error('❌ Cart is empty');
-      return;
-    }
-    if (!paymentMethod) {
-      toast.error('❌ Please select payment method (CASH or CARD)');
-      return;
-    }
-    if (grandTotal <= 0) {
-      toast.error('❌ Invalid bill total');
-      return;
+  const handleCreateCustomer = async () => {
+    const name = newCustomer.name?.trim();
+    const mobile = newCustomer.mobile?.trim();
+    const address = newCustomer.address?.trim();
+    
+    if (!name || !mobile || !address) {
+      toast.error('❌ Please fill required fields: Name, Mobile, Address');
+      return null;
     }
     
-    setProcessing(true);
+    if (!/^07[01245678]\d{7}$/.test(mobile)) {
+      toast.error('❌ Invalid mobile format. Use: 07X XXX XXXX');
+      return null;
+    }
+    
     try {
-      const billItems = cart.map(item => ({
-        product_id: item.product_id,
-        product_name: item.product_name,
-        barcode: item.barcode,
-        unit_price: item.unit_price,
-        quantity: item.quantity,
-        discount_lkr: item.discount_lkr
-      }));
+      const response = await CustomerService.create({
+        customer_type: newCustomer.customer_type || 'individual',
+        name,
+        company_name: newCustomer.company_name?.trim() || null,
+        mobile,
+        email: newCustomer.email?.trim() || null,
+        address,
+        city: newCustomer.city?.trim() || null,
+        nic_id: newCustomer.nic_id?.trim() || null
+      });
       
-      const response = await BillService.create(billItems, paymentMethod);
-      
-      if (response.success) {
-        toast.success(`✅ Bill #${response.data.billNumber} saved!`);
-        openReceiptPrint(response.data, cart, paymentMethod);
-        setCart([]);
-        setPaymentMethod(null);
-        setSearchQuery('');
-        setShowSuggestions(false);
-        setSelectedSuggestionIndex(-1);
-        searchInputRef.current?.focus();
+      if (response?.success && response.data) {
+        toast.success('✅ Customer created successfully');
+        fetchCustomers();
+        return response.data;
+      } else {
+        toast.error(response?.error || '❌ Failed to create customer');
+        return null;
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || '❌ Billing failed');
-      console.error('Checkout error:', error);
-    } finally {
-      setProcessing(false);
+      console.error('Create customer error:', error);
+      toast.error('❌ Network error creating customer');
+      return null;
     }
   };
 
-  // 🧾 Professional Receipt Print Layout
-  const openReceiptPrint = (billData, cartItems, paymentMethod) => {
+  const openCashReceiptPrint = (billData, cartItems, paymentMethod) => {
     const printWindow = window.open('', '_blank', 'width=400,height=600');
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -433,15 +1769,15 @@ const CashBilling = () => {
             </tr>
           </thead>
           <tbody>
-            ${cartItems.map(item => `
+            ${Array.isArray(cartItems) ? cartItems.map(item => `
               <tr>
                 <td>${item.product_name}<br><span style="font-size:9px;color:#666">${item.barcode}</span></td>
                 <td style="text-align:center">${item.quantity}</td>
-                <td style="text-align:right">${item.unit_price.toFixed(2)}</td>
-                <td style="text-align:right;color:red">${item.discount_lkr > 0 ? '-' + (item.discount_lkr * item.quantity).toFixed(2) : '-'}</td>
-                <td style="text-align:right;font-weight:bold">${((item.unit_price * item.quantity) - (item.discount_lkr * item.quantity)).toFixed(2)}</td>
+                <td style="text-align:right">${(item.unit_price || 0).toFixed(2)}</td>
+                <td style="text-align:right;color:red">${(item.discount_lkr || 0) > 0 ? '-' + ((item.discount_lkr * item.quantity) || 0).toFixed(2) : '-'}</td>
+                <td style="text-align:right;font-weight:bold">${(((item.unit_price || 0) * (item.quantity || 1)) - ((item.discount_lkr || 0) * (item.quantity || 1))).toFixed(2)}</td>
               </tr>
-            `).join('')}
+            `).join('') : ''}
           </tbody>
         </table>
         <div class="totals">
@@ -466,16 +1802,207 @@ const CashBilling = () => {
     printWindow.document.close();
   };
 
-  // Format LKR
-  const formatLKR = (amount) => `LKR ${amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+  const openCreditReceiptPrint = (billData, cartItems, customer) => {
+    const printWindow = window.open('', '_blank', 'width=400,height=700');
+    const safeOutstanding = customer?.outstanding_balance || 0;
+    
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Credit Bill - ${billData.billNumber}</title>
+        <style>
+          @page { size: 80mm auto; margin: 0; }
+          body { font-family: 'Courier New', monospace; font-size: 10px; padding: 8px; margin: 0; background: #fff; color: #000; }
+          .header { text-align: center; margin-bottom: 8px; border-bottom: 2px dashed #000; padding-bottom: 8px; }
+          .header h2 { margin: 0; font-size: 16px; font-weight: bold; }
+          .header p { margin: 2px 0; font-size: 9px; }
+          .customer-info { margin-bottom: 8px; font-size: 9px; border-bottom: 1px solid #ccc; padding-bottom: 6px; }
+          .customer-info div { margin: 2px 0; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+          th { text-align: left; border-bottom: 1px solid #000; padding: 3px 0; font-size: 9px; font-weight: bold; }
+          td { padding: 3px 0; font-size: 9px; }
+          .totals { border-top: 2px dashed #000; padding-top: 6px; margin-top: 6px; }
+          .totals div { display: flex; justify-content: space-between; margin: 3px 0; font-size: 10px; }
+          .grand-total { font-weight: bold; font-size: 13px; border-top: 1px solid #000; padding-top: 4px; margin-top: 4px; }
+          .outstanding { background: #7c3aed; color: #fff; padding: 6px; margin-top: 6px; text-align: center; font-weight: bold; font-size: 12px; }
+          .footer { text-align: center; margin-top: 12px; font-size: 8px; border-top: 1px dashed #000; padding-top: 6px; }
+          .credit-badge { background: #7c3aed; color: #fff; padding: 2px 8px; font-weight: bold; font-size: 9px; border-radius: 3px; }
+          @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h2>SAMAGI HARDWARE</h2>
+          <p>POS System - <span class="credit-badge">CREDIT BILL</span></p>
+          <p>${new Date().toLocaleString('en-LK')}</p>
+        </div>
+        <div class="customer-info">
+          <div><strong>Bill #:</strong> ${billData.billNumber}</div>
+          <div><strong>Customer:</strong> ${customer?.name || 'N/A'}${customer?.company_name ? ` (${customer.company_name})` : ''}</div>
+          <div><strong>Mobile:</strong> ${customer?.mobile || 'N/A'}</div>
+          <div><strong>Address:</strong> ${customer?.address || 'N/A'}${customer?.city ? `, ${customer.city}` : ''}</div>
+          <div><strong>Due Date:</strong> ${billData.due_date ? new Date(billData.due_date).toLocaleDateString('en-LK') : 'N/A'}</div>
+          ${safeOutstanding > 0 ? `<div><strong>Previous Outstanding:</strong> LKR ${safeOutstanding.toFixed(2)}</div>` : ''}
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:40%">Item</th>
+              <th style="text-align:center">Qty</th>
+              <th style="text-align:right">Price</th>
+              <th style="text-align:right">Disc</th>
+              <th style="text-align:right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${Array.isArray(cartItems) ? cartItems.map(item => `
+              <tr>
+                <td>${item.product_name || 'N/A'}<br><span style="font-size:8px;color:#666">${item.barcode || ''}</span></td>
+                <td style="text-align:center">${item.quantity || 1}</td>
+                <td style="text-align:right">${(item.unit_price || 0).toFixed(2)}</td>
+                <td style="text-align:right;color:red">${(item.discount_lkr || 0) > 0 ? '-' + ((item.discount_lkr * item.quantity) || 0).toFixed(2) : '-'}</td>
+                <td style="text-align:right;font-weight:bold">${(((item.unit_price || 0) * (item.quantity || 1)) - ((item.discount_lkr || 0) * (item.quantity || 1))).toFixed(2)}</td>
+              </tr>
+            `).join('') : ''}
+          </tbody>
+        </table>
+        <div class="totals">
+          <div><span>Subtotal:</span><span>LKR ${totalAmount.toFixed(2)}</span></div>
+          <div style="color:red"><span>Discount:</span><span>- LKR ${totalDiscount.toFixed(2)}</span></div>
+          <div class="grand-total"><span>TOTAL:</span><span>LKR ${grandTotal.toFixed(2)}</span></div>
+        </div>
+        <div class="outstanding">
+          NEW OUTSTANDING: LKR ${(safeOutstanding + grandTotal).toFixed(2)}
+        </div>
+        <div class="footer">
+          <p>Thank you for your business!</p>
+          <p>Please settle the bill by the due date</p>
+          <p>Cashier: ${billData.cashier || 'N/A'}</p>
+        </div>
+        <script>
+          window.onload = () => { setTimeout(() => window.print(), 300); };
+        <\/script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  const handleCheckout = async () => {
+    if (!Array.isArray(cart) || cart.length === 0) {
+      toast.error('❌ Cart is empty');
+      return;
+    }
+    if (!paymentMethod) {
+      toast.error('❌ Please select payment method (Ctrl+1=Cash, Ctrl+2=Card, Ctrl+3=Credit)');
+      return;
+    }
+    if (grandTotal <= 0) {
+      toast.error('❌ Invalid bill total');
+      return;
+    }
+    
+    if (paymentMethod === 'CREDIT') {
+      setShowCreditModal(true);
+      return;
+    }
+    
+    await processCheckout();
+  };
+
+  const processCheckout = async (creditData = null) => {
+    setProcessing(true);
+    
+    try {
+      const billItems = cart.map(item => ({
+        product_id: item.product_id,
+        product_name: item.product_name,
+        barcode: item.barcode,
+        unit_price: parseFloat(item.unit_price) || 0,
+        quantity: parseInt(item.quantity) || 1,
+        discount_lkr: parseFloat(item.discount_lkr) || 0
+      }));
+      
+      let response;
+      
+      if (paymentMethod === 'CREDIT' && creditData) {
+        const customer = creditData.customer;
+        response = await CreditBillService.create({
+          customer_id: customer.id,
+          customer_name: customer.name,
+          customer_mobile: customer.mobile,
+          items: billItems,
+          due_date: creditData.dueDate,
+          notes: creditData.notes
+        });
+        
+        if (response?.success && response.data) {
+          toast.success(`✅ Credit Bill #${response.data.billNumber} saved!`);
+          openCreditReceiptPrint(response.data, cart, customer);
+        }
+      } else {
+        response = await BillService.create(billItems, paymentMethod);
+        
+        if (response?.success) {
+          toast.success(`✅ Bill #${response.data.billNumber} saved!`);
+          openCashReceiptPrint(response.data, cart, paymentMethod);
+        }
+      }
+      
+      if (response?.success) {
+        setCart([]);
+        setPaymentMethod(null);
+        setSelectedCustomer(null);
+        setCustomerType('existing');
+        setSearchQuery('');
+        setSearchCustomer('');
+        setCreditNotes('');
+        setSelectedCartItemIndex(-1);
+        const defaultDue = new Date();
+        defaultDue.setDate(defaultDue.getDate() + 30);
+        setDueDate(defaultDue.toISOString().slice(0, 10));
+        searchInputRef.current?.focus();
+      } else {
+        toast.error(response?.error || '❌ Billing failed');
+      }
+      
+    } catch (error) {
+      console.error('Checkout error:', error);
+      toast.error(error.message || '❌ Billing failed - please try again');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const formatLKR = (amount) => `LKR ${(amount || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30">
       <Toaster position="top-right" />
       <Sidebar />
       
+      <ProductConfirmationModal 
+        product={pendingProduct}
+        isOpen={showProductModal}
+        onClose={() => {
+          setShowProductModal(false);
+          setPendingProduct(null);
+          searchInputRef.current?.focus();
+        }}
+        onConfirm={confirmAddToCart}
+        formatLKR={formatLKR}
+      />
+      
+      <CreditCustomerModal
+        isOpen={showCreditModal}
+        onClose={() => setShowCreditModal(false)}
+        onConfirm={processCheckout}
+        customers={customers}
+        formatLKR={formatLKR}
+      />
+      
       <main className="flex-1 flex flex-col">
-        {/* Professional Header */}
         <header className="bg-white shadow-sm border-b px-6 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -484,7 +2011,7 @@ const CashBilling = () => {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Cash Billing</h1>
-                <p className="text-sm text-gray-500">Fast, secure, and professional POS</p>
+                <p className="text-sm text-gray-500">⌨️ Ctrl+1/2/3 for payment • Ctrl+Alt+E/N for credit</p>
               </div>
             </div>
             
@@ -502,15 +2029,11 @@ const CashBilling = () => {
           </div>
         </header>
         
-        {/* Main Content Area */}
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 p-6">
           
-          {/* LEFT: Search + Cart (2/3 width) */}
           <div className="lg:col-span-2 flex flex-col gap-4">
             
-            {/* Professional Search Bar with Barcode Scanner Mode */}
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5 relative">
-              {/* Barcode Scanner Mode Toggle */}
               <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
                 <label className="flex items-center gap-3 cursor-pointer group">
                   <div className="relative">
@@ -549,7 +2072,6 @@ const CashBilling = () => {
                 )}
               </div>
               
-              {/* Search Input */}
               <form onSubmit={handleSearchSubmit} className="relative">
                 <div className="flex items-center gap-3">
                   <div className="relative flex-1">
@@ -591,14 +2113,13 @@ const CashBilling = () => {
                       disabled={!searchQuery.trim()}
                       className="px-6 py-4 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all shadow-md hover:shadow-lg"
                     >
-                      Add to Cart
+                      Search
                     </button>
                   )}
                 </div>
               </form>
               
-              {/* Keyboard Instructions */}
-              <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
+              <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-500">
                 <span className="flex items-center gap-1">
                   <kbd className="px-2 py-0.5 bg-gray-100 rounded border font-mono">↑↓</kbd>
                   Navigate
@@ -611,16 +2132,19 @@ const CashBilling = () => {
                   <kbd className="px-2 py-0.5 bg-gray-100 rounded border font-mono">ESC</kbd>
                   Cancel
                 </span>
+                <span className="flex items-center gap-1">
+                  <kbd className="px-2 py-0.5 bg-gray-100 rounded border font-mono">Ctrl+1/2/3</kbd>
+                  Payment
+                </span>
               </div>
               
-              {/* Auto-suggestions Dropdown */}
-              {showSuggestions && suggestions.length > 0 && (
+              {showSuggestions && Array.isArray(suggestions) && suggestions.length > 0 && (
                 <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
                   {suggestions.map((product, index) => (
                     <button
-                      key={product.id}
+                      key={product?.id || index}
                       ref={el => suggestionRefs.current[index] = el}
-                      onClick={() => addToCart(product)}
+                      onClick={() => product && handleProductSelect(product)}
                       className={`w-full text-left px-5 py-4 border-b border-gray-100 last:border-0 flex justify-between items-center transition-all group ${
                         index === selectedSuggestionIndex
                           ? 'bg-primary-100 border-l-4 border-l-primary-600'
@@ -630,22 +2154,22 @@ const CashBilling = () => {
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <p className={`font-semibold ${index === selectedSuggestionIndex ? 'text-primary-700' : 'text-gray-900 group-hover:text-primary-700'}`}>
-                            {product.item_name}
+                            {product.item_name || 'N/A'}
                           </p>
-                          {product.discount_value > 0 && (
+                          {(product.discount_value || 0) > 0 && (
                             <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full font-medium">
                               -{product.discount_value}{product.discount_type === 'percent' ? '%' : ''}
                             </span>
                           )}
                         </div>
                         <p className="text-xs text-gray-500 mt-1">
-                          <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded">{product.barcode}</span>
+                          <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded">{product.barcode || ''}</span>
                           {product.short_form && <span className="ml-2">• {product.short_form}</span>}
                         </p>
                       </div>
                       <div className="text-right ml-4">
                         <p className="font-bold text-primary-700 text-lg">{formatLKR(product.selling_price)}</p>
-                        <p className="text-xs text-gray-500">Stock: <span className={product.stock_quantity <= 10 ? 'text-red-600 font-medium' : 'text-green-600'}>{product.stock_quantity}</span></p>
+                        <p className="text-xs text-gray-500">Stock: <span className={(product.stock_quantity || 0) <= 10 ? 'text-red-600 font-medium' : 'text-green-600'}>{product.stock_quantity || 0}</span></p>
                       </div>
                     </button>
                   ))}
@@ -653,9 +2177,7 @@ const CashBilling = () => {
               )}
             </div>
             
-            {/* Cart Table */}
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 flex-1 overflow-hidden flex flex-col">
-              {/* Cart Header */}
               <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-gray-50 to-white">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white font-bold">
@@ -665,7 +2187,7 @@ const CashBilling = () => {
                 </div>
                 <button 
                   onClick={clearCart} 
-                  disabled={cart.length === 0}
+                  disabled={!Array.isArray(cart) || cart.length === 0}
                   className="text-sm text-red-600 hover:text-red-700 hover:bg-red-50 px-4 py-2 rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -675,15 +2197,15 @@ const CashBilling = () => {
                 </button>
               </div>
               
-              {/* Cart Content */}
               <div className="flex-1 overflow-auto" ref={cartContainerRef}>
-                {cart.length === 0 ? (
+                {!Array.isArray(cart) || cart.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-80 text-gray-400">
                     <div className="text-7xl mb-4 opacity-30">🛒</div>
                     <p className="text-lg font-semibold text-gray-600">Cart is empty</p>
                     <p className="text-sm mt-2 text-gray-500">
                       {barcodeScannerMode ? 'Scan a barcode to add items' : 'Search products or scan barcode to add items'}
                     </p>
+                    <p className="text-xs text-gray-400 mt-4">💡 Tip: Press Ctrl+1/2/3 to select payment method</p>
                   </div>
                 ) : (
                   <table className="w-full">
@@ -700,29 +2222,34 @@ const CashBilling = () => {
                     <tbody className="divide-y divide-gray-100">
                       {cart.map((item, index) => (
                         <tr 
-                          key={item.product_id} 
-                          className={`transition-all duration-200 ${
-                            highlightRow === item.product_id 
-                              ? 'bg-primary-50 ring-2 ring-primary-500/30' 
-                              : index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
+                          key={item?.product_id || index}
+                          ref={el => cartItemRefs.current[index] = el}
+                          className={`transition-all duration-200 cursor-pointer ${
+                            selectedCartItemIndex === index
+                              ? 'bg-primary-100 ring-2 ring-primary-500 shadow-md'
+                              : highlightRow === item?.product_id 
+                                ? 'bg-primary-50 ring-2 ring-primary-500/30' 
+                                : index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
                           } hover:bg-blue-50/50`}
+                          onClick={() => setSelectedCartItemIndex(index)}
+                          onMouseEnter={() => setSelectedCartItemIndex(index)}
                         >
                           <td className="px-6 py-4">
                             <div className="flex items-start gap-3">
                               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center text-primary-700 font-bold text-lg flex-shrink-0 shadow-sm">
-                                {item.product_name.charAt(0).toUpperCase()}
+                                {(item?.product_name || '?').charAt(0).toUpperCase()}
                               </div>
                               <div>
-                                <p className="font-bold text-gray-900">{item.product_name}</p>
-                                <p className="text-xs text-gray-500 font-mono mt-0.5 bg-gray-100 inline-block px-1.5 rounded">{item.barcode}</p>
-                                {item.short_form && (
+                                <p className="font-bold text-gray-900">{item?.product_name || 'N/A'}</p>
+                                <p className="text-xs text-gray-500 font-mono mt-0.5 bg-gray-100 inline-block px-1.5 rounded">{item?.barcode || ''}</p>
+                                {item?.short_form && (
                                   <div className="mt-1">
                                     <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
                                       {item.short_form}
                                     </span>
                                   </div>
                                 )}
-                                {item.discount_lkr > 0 && (
+                                {(item?.discount_lkr || 0) > 0 && (
                                   <div className="mt-1.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-green-100 text-green-700 border border-green-200">
                                     ✓ Auto Discount: {formatLKR(item.discount_lkr)}
                                   </div>
@@ -731,32 +2258,29 @@ const CashBilling = () => {
                             </div>
                           </td>
                           
-                          {/* Quantity */}
                           <td className="px-4 py-4 text-center">
                             <div className="flex flex-col items-center gap-1">
                               <input
                                 type="number"
                                 min="1"
-                                max={item.max_stock}
-                                value={item.quantity}
-                                onChange={(e) => updateCartItem(item.product_id, 'quantity', e.target.value)}
+                                max={item?.max_stock || 999}
+                                value={item?.quantity || 1}
+                                onChange={(e) => updateCartItem(item?.product_id, 'quantity', e.target.value)}
                                 className="w-20 text-center border-2 border-gray-200 rounded-xl py-2 font-bold text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
                               />
-                              <p className="text-[10px] text-gray-400">Max: {item.max_stock}</p>
+                              <p className="text-[10px] text-gray-400">Max: {item?.max_stock || 0}</p>
                             </div>
                           </td>
                           
-                          {/* Unit Price */}
                           <td className="px-4 py-4 text-right font-bold text-gray-900">
-                            {formatLKR(item.unit_price)}
+                            {formatLKR(item?.unit_price)}
                           </td>
                           
-                          {/* Discount Controls */}
                           <td className="px-4 py-4 text-right">
                             <div className="flex flex-col items-end gap-2">
                               <select
-                                value={item.discount_mode}
-                                onChange={(e) => updateCartItem(item.product_id, 'discount_mode', e.target.value)}
+                                value={item?.discount_mode || 'default'}
+                                onChange={(e) => updateCartItem(item?.product_id, 'discount_mode', e.target.value)}
                                 className="w-full text-xs border-2 border-gray-200 rounded-lg py-2 px-2 bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-medium"
                               >
                                 <option value="default">🤖 Default (Auto)</option>
@@ -768,42 +2292,40 @@ const CashBilling = () => {
                                 <input
                                   type="number"
                                   min="0"
-                                  step={item.discount_mode === 'percent' ? "1" : "0.01"}
-                                  max={item.discount_mode === 'percent' ? "100" : item.unit_price}
-                                  value={item.discount_value}
-                                  onChange={(e) => updateCartItem(item.product_id, 'discount_value', e.target.value)}
-                                  disabled={item.discount_mode === 'default'}
+                                  step={(item?.discount_mode === 'percent') ? "1" : "0.01"}
+                                  max={(item?.discount_mode === 'percent') ? "100" : (item?.unit_price || 0)}
+                                  value={item?.discount_value || 0}
+                                  onChange={(e) => updateCartItem(item?.product_id, 'discount_value', e.target.value)}
+                                  disabled={(item?.discount_mode || 'default') === 'default'}
                                   className={`w-full text-right border-2 rounded-lg py-2 font-medium transition-all pl-8 ${
-                                    item.discount_mode === 'default'
+                                    (item?.discount_mode || 'default') === 'default'
                                       ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed'
                                       : 'border-gray-300 focus:ring-2 focus:ring-primary-500 focus:border-primary-500'
                                   }`}
-                                  placeholder={item.discount_mode === 'percent' ? '0%' : '0.00'}
+                                  placeholder={(item?.discount_mode === 'percent') ? '0%' : '0.00'}
                                 />
                                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">
-                                  {item.discount_mode === 'percent' ? '%' : 'Rs'}
+                                  {(item?.discount_mode === 'percent') ? '%' : 'Rs'}
                                 </span>
                               </div>
                               
-                              {item.discount_lkr > 0 && (
+                              {(item?.discount_lkr || 0) > 0 && (
                                 <p className="text-[10px] text-green-600 font-bold">
-                                  Saved: {formatLKR(item.discount_lkr * item.quantity)}
+                                  Saved: {formatLKR((item.discount_lkr || 0) * (item.quantity || 1))}
                                 </p>
                               )}
                             </div>
                           </td>
                           
-                          {/* Subtotal */}
                           <td className="px-4 py-4 text-right font-black text-primary-700 text-xl">
-                            {formatLKR((item.unit_price * item.quantity) - (item.discount_lkr * item.quantity))}
+                            {formatLKR(((item?.unit_price || 0) * (item?.quantity || 1)) - ((item?.discount_lkr || 0) * (item?.quantity || 1)))}
                           </td>
                           
-                          {/* Action */}
                           <td className="px-4 py-4 text-center">
                             <button
-                              onClick={() => removeFromCart(item.product_id)}
+                              onClick={() => item?.product_id && removeFromCart(item.product_id)}
                               className="p-2.5 text-red-500 hover:bg-red-50 hover:text-red-700 rounded-xl transition-all hover:shadow-md"
-                              title="Remove Item"
+                              title="Remove Item (Backspace)"
                             >
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -816,14 +2338,20 @@ const CashBilling = () => {
                   </table>
                 )}
               </div>
+              
+              {cart.length > 0 && (
+                <div className="px-6 py-3 bg-gray-50 border-t border-gray-100 text-xs text-gray-500 flex items-center gap-4">
+                  <span>⌨️ <kbd className="px-1.5 py-0.5 bg-gray-200 rounded font-mono">↑↓</kbd> Navigate items</span>
+                  <span><kbd className="px-1.5 py-0.5 bg-gray-200 rounded font-mono">Backspace</kbd> Remove selected</span>
+                  <span><kbd className="px-1.5 py-0.5 bg-gray-200 rounded font-mono">Ctrl+1/2/3</kbd> Select payment</span>
+                </div>
+              )}
             </div>
           </div>
           
-          {/* RIGHT: Summary & Checkout (1/3 width) */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 sticky top-6">
               
-              {/* Bill Summary Header */}
               <div className="flex items-center gap-3 mb-6 pb-4 border-b-2 border-gray-100">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white shadow-lg">
                   📊
@@ -834,7 +2362,6 @@ const CashBilling = () => {
                 </div>
               </div>
               
-              {/* Totals */}
               <div className="space-y-4 mb-6">
                 <div className="flex justify-between items-center text-gray-600 p-3 bg-gray-50 rounded-xl">
                   <span className="text-sm font-medium">Subtotal</span>
@@ -860,20 +2387,24 @@ const CashBilling = () => {
                 </div>
               </div>
               
-              {/* Payment Method Selection - REQUIRED */}
               <div className="mb-6">
                 <label className="block text-sm font-bold text-gray-700 mb-3">
                   Payment Method <span className="text-red-500">*</span>
                 </label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <button
-                    onClick={() => setPaymentMethod('CASH')}
+                    onClick={() => {
+                      setPaymentMethod('CASH');
+                      setSelectedCustomer(null);
+                      toast.success('💵 Cash selected (Ctrl+1)');
+                    }}
                     className={`relative p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
                       paymentMethod === 'CASH'
                         ? 'border-green-500 bg-green-50 shadow-lg shadow-green-500/20'
                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                     }`}
                   >
+                    <span className="absolute top-2 left-2 w-5 h-5 bg-gray-800 text-white rounded-full flex items-center justify-center text-xs font-bold">Ctrl+1</span>
                     <span className="text-3xl">💵</span>
                     <span className={`font-bold text-sm ${paymentMethod === 'CASH' ? 'text-green-700' : 'text-gray-700'}`}>
                       CASH
@@ -888,13 +2419,18 @@ const CashBilling = () => {
                   </button>
                   
                   <button
-                    onClick={() => setPaymentMethod('CARD')}
+                    onClick={() => {
+                      setPaymentMethod('CARD');
+                      setSelectedCustomer(null);
+                      toast.success('💳 Card selected (Ctrl+2)');
+                    }}
                     className={`relative p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
                       paymentMethod === 'CARD'
                         ? 'border-blue-500 bg-blue-50 shadow-lg shadow-blue-500/20'
                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                     }`}
                   >
+                    <span className="absolute top-2 left-2 w-5 h-5 bg-gray-800 text-white rounded-full flex items-center justify-center text-xs font-bold">Ctrl+2</span>
                     <span className="text-3xl">💳</span>
                     <span className={`font-bold text-sm ${paymentMethod === 'CARD' ? 'text-blue-700' : 'text-gray-700'}`}>
                       CARD
@@ -907,23 +2443,78 @@ const CashBilling = () => {
                       </div>
                     )}
                   </button>
+                  
+                  <button
+                    onClick={() => {
+                      setPaymentMethod('CREDIT');
+                      setSelectedCustomer(null);
+                      setSearchCustomer('');
+                      toast.success('📝 Credit selected (Ctrl+3)');
+                    }}
+                    className={`relative p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
+                      paymentMethod === 'CREDIT'
+                        ? 'border-purple-500 bg-purple-50 shadow-lg shadow-purple-500/20'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className="absolute top-2 left-2 w-5 h-5 bg-gray-800 text-white rounded-full flex items-center justify-center text-xs font-bold">Ctrl+3</span>
+                    <span className="text-3xl">📝</span>
+                    <span className={`font-bold text-sm ${paymentMethod === 'CREDIT' ? 'text-purple-700' : 'text-gray-700'}`}>
+                      CREDIT
+                    </span>
+                    {paymentMethod === 'CREDIT' && (
+                      <div className="absolute top-2 right-2 w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center">
+                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
                 </div>
+                
                 {!paymentMethod && (
                   <p className="mt-2 text-xs text-amber-600 bg-amber-50 p-2 rounded-lg border border-amber-200 flex items-center gap-1">
                     <span>⚠️</span>
-                    <span>Please select payment method to proceed</span>
+                    <span>Press <kbd className="px-1 py-0.5 bg-amber-100 rounded font-mono">Ctrl+1</kbd>/<kbd className="px-1 py-0.5 bg-amber-100 rounded font-mono">2</kbd>/<kbd className="px-1 py-0.5 bg-amber-100 rounded font-mono">3</kbd> to select</span>
                   </p>
                 )}
               </div>
               
-              {/* Checkout Button */}
+              {paymentMethod === 'CREDIT' && (
+                <div className="mb-6 p-4 bg-gradient-to-br from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-xl">
+                  <h4 className="font-bold text-purple-900 mb-3 flex items-center gap-2">
+                    <span>👤</span>
+                    Customer Required
+                  </h4>
+                  <p className="text-sm text-gray-600">
+                    Press <kbd className="px-1.5 py-0.5 bg-purple-100 rounded font-mono">F9</kbd> or click below. Use <kbd className="px-1.5 py-0.5 bg-purple-100 rounded font-mono">Ctrl+Alt+E</kbd> for Existing or <kbd className="px-1.5 py-0.5 bg-purple-100 rounded font-mono">Ctrl+Alt+N</kbd> for New customer.
+                  </p>
+                  {selectedCustomer && (
+                    <div className="mt-3 p-3 bg-purple-100 border border-purple-200 rounded-lg">
+                      <p className="font-bold text-purple-900 text-sm">{selectedCustomer?.name}</p>
+                      <p className="text-xs text-purple-700">📞 {selectedCustomer?.mobile}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+              
               <button
                 onClick={handleCheckout}
-                disabled={processing || cart.length === 0 || grandTotal <= 0 || !paymentMethod}
+                disabled={
+                  processing || 
+                  !Array.isArray(cart) || cart.length === 0 || 
+                  grandTotal <= 0 || 
+                  !paymentMethod
+                }
                 className={`w-full py-4 font-bold text-lg rounded-xl shadow-lg transition-all flex items-center justify-center gap-3 mb-4 ${
-                  processing || cart.length === 0 || grandTotal <= 0 || !paymentMethod
+                  processing || 
+                  !Array.isArray(cart) || cart.length === 0 || 
+                  grandTotal <= 0 || 
+                  !paymentMethod
                     ? 'bg-gray-300 cursor-not-allowed text-gray-500'
-                    : 'bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white hover:shadow-xl hover:scale-[1.02]'
+                    : paymentMethod === 'CREDIT'
+                      ? 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white hover:shadow-xl hover:scale-[1.02]'
+                      : 'bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white hover:shadow-xl hover:scale-[1.02]'
                 }`}
               >
                 {processing ? (
@@ -933,6 +2524,13 @@ const CashBilling = () => {
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                     </svg>
                     Processing...
+                  </>
+                ) : paymentMethod === 'CREDIT' ? (
+                  <>
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Create Credit Bill (F9)
                   </>
                 ) : (
                   <>
@@ -944,7 +2542,6 @@ const CashBilling = () => {
                 )}
               </button>
               
-              {/* Security Badge */}
               <div className="bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl p-4 mb-4">
                 <div className="flex items-start gap-3">
                   <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
@@ -955,13 +2552,14 @@ const CashBilling = () => {
                   <div>
                     <p className="text-sm font-bold text-gray-900">Transaction Secured</p>
                     <p className="text-xs text-gray-600 mt-1">
-                      All sales logged with cashier ID, timestamp & payment method. Stock deducted after billing.
+                      {paymentMethod === 'CREDIT' 
+                        ? 'Credit bills logged with customer, due date & cashier. Stock deducted. Outstanding balance updated.'
+                        : 'All sales logged with cashier ID, timestamp & payment method. Stock deducted after billing.'}
                     </p>
                   </div>
                 </div>
               </div>
               
-              {/* Keyboard Shortcuts */}
               <div className="pt-4 border-t-2 border-gray-100">
                 <p className="text-xs font-bold text-gray-700 mb-3 flex items-center gap-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -973,8 +2571,11 @@ const CashBilling = () => {
                   {[
                     { key: 'F2', label: 'Focus Search', icon: '🔍', color: 'blue' },
                     { key: 'F4', label: 'Clear Cart', icon: '🗑️', color: 'red' },
-                    { key: 'F9', label: 'Print & Save', icon: '🖨️', color: 'green' },
-                    { key: 'Enter', label: 'Add Product', icon: '➕', color: 'purple' },
+                    { key: 'F9', label: paymentMethod === 'CREDIT' ? 'Create Credit Bill' : 'Print & Save', icon: paymentMethod === 'CREDIT' ? '📄' : '🖨️', color: paymentMethod === 'CREDIT' ? 'purple' : 'green' },
+                    { key: 'Ctrl+1/2/3', label: 'Select Payment', icon: '💰', color: 'amber' },
+                    { key: 'Ctrl+Alt+E/N', label: 'Credit Customer', icon: '👤', color: 'purple' },
+                    { key: '↑↓', label: 'Navigate Cart', icon: '📋', color: 'gray' },
+                    { key: '⌫', label: 'Remove Item', icon: '🗑️', color: 'red' },
                   ].map(({ key, label, icon, color }) => (
                     <div key={key} className={`flex items-center gap-2 text-xs bg-${color}-50 p-2.5 rounded-lg border border-${color}-100`}>
                       <kbd className={`px-2 py-1 bg-white rounded border-2 border-${color}-300 font-mono font-bold text-${color}-700 shadow-sm`}>
