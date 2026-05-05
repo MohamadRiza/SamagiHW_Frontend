@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 
-const SidebarItem = ({ item, collapsed, role }) => {
+const SidebarItem = memo(({ item, collapsed, role, isDesktop, onNavigate }) => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   
@@ -16,42 +16,38 @@ const SidebarItem = ({ item, collapsed, role }) => {
     return (
       <div className="mb-1">
         <button
-          onClick={() => !collapsed && setIsOpen(!isOpen)}
+          onClick={() => isDesktop && !collapsed && setIsOpen(!isOpen)}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200
             ${isActive && !collapsed 
               ? 'bg-primary-700/40 text-white border-l-2 border-primary-400' 
               : 'text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-textHover'
             }
             ${collapsed ? 'justify-center' : 'justify-between'}
+            focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-inset
           `}
           title={collapsed ? item.label : undefined}
+          aria-expanded={isOpen}
+          disabled={collapsed || !isDesktop}
         >
           <div className="flex items-center gap-3">
-            <span className={`text-lg ${isActive ? 'text-primary-300' : ''}`}>{item.icon}</span>
-            {!collapsed && <span className="font-medium text-sm">{item.label}</span>}
+            <span className={`text-lg flex-shrink-0 ${isActive ? 'text-primary-300' : ''}`}>{item.icon}</span>
+            {!collapsed && <span className="font-medium text-sm truncate">{item.label}</span>}
           </div>
           
-          {!collapsed && (
-            <svg 
-              className={`w-4 h-4 text-sidebar-text transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
+          {!collapsed && isDesktop && (
+            <svg className={`w-4 h-4 text-sidebar-text transition-transform duration-200 flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           )}
         </button>
         
-        {/* Submenu */}
-        {!collapsed && isOpen && (
-          <div className="ml-4 mt-1 space-y-1 border-l-2 border-sidebar-border pl-3">
+        {!collapsed && isOpen && isDesktop && (
+          <div className="ml-4 mt-1 space-y-1 border-l-2 border-sidebar-border pl-3 animate-fadeIn">
             {item.children.map((child, idx) => {
               if (child.roles && !child.roles.includes(role)) return null;
-              
               return (
                 <NavLink
-                  key={idx}
+                  key={`${child.label}-${idx}`}
                   to={child.path}
                   className={({ isActive }) =>
                     `block px-4 py-2 rounded-lg text-sm transition-all duration-200
@@ -60,6 +56,10 @@ const SidebarItem = ({ item, collapsed, role }) => {
                       : 'text-sidebar-text hover:text-sidebar-textHover hover:bg-sidebar-hover/50'
                     }`
                   }
+                  onClick={() => {
+                    onNavigate?.();
+                    if (!isDesktop) setIsOpen(false);
+                  }}
                 >
                   {child.label}
                 </NavLink>
@@ -82,14 +82,17 @@ const SidebarItem = ({ item, collapsed, role }) => {
           : 'text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-textHover'
         }
         ${collapsed ? 'justify-center' : ''}
+        focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-inset
         `
       }
       title={collapsed ? item.label : undefined}
+      onClick={onNavigate}
     >
-      <span className={`text-lg ${isActive ? 'text-primary-300' : ''}`}>{item.icon}</span>
-      {!collapsed && <span className="font-medium text-sm">{item.label}</span>}
+      <span className={`text-lg flex-shrink-0 ${isActive ? 'text-primary-300' : ''}`}>{item.icon}</span>
+      {!collapsed && <span className="font-medium text-sm truncate">{item.label}</span>}
     </NavLink>
   );
-};
+});
 
+SidebarItem.displayName = 'SidebarItem';
 export default SidebarItem;
