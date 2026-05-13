@@ -2080,7 +2080,7 @@ const CashBilling = () => {
                       type="text"
                       value={searchQuery}
                       onChange={handleSearchChange}
-                      placeholder={barcodeScannerMode ? "🔍 Scan barcode now..." : "🔍 Search by name, barcode, or short form..."}
+                      placeholder={barcodeScannerMode ? "Scan barcode now..." : "Search by name, barcode, or short form..."}
                       readOnly={barcodeScannerMode}
                       className={`w-full pl-12 pr-24 py-4 text-lg bg-gray-50 border-2 rounded-xl focus:outline-none transition-all ${
                         barcodeScannerMode
