@@ -12,9 +12,10 @@ const Settings = () => {
   const [appInfo, setAppInfo] = useState(null);
   const [updateInfo, setUpdateInfo] = useState(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
-  const [installingUpdate, setInstallingUpdate] = useState(false);
+  const [downloadingUpdate, setDownloadingUpdate] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [updateError, setUpdateError] = useState(null);
+  const [updateStatus, setUpdateStatus] = useState(null);
   
   // Account state
   const [profile, setProfile] = useState(null);
@@ -37,9 +38,63 @@ const Settings = () => {
     
     // Auto-check for updates on first load (if admin)
     if (isAdmin) {
-      handleCheckUpdates(true); // silent check
+      setTimeout(() => handleCheckUpdates(true), 2000);
     }
-  }, []);
+    
+    // Setup Electron IPC listeners for real-time update status
+    if (window.electronAPI) {
+      // Listen for update status changes
+      const cleanupStatus = window.electronAPI.onUpdateStatus((data) => {
+        console.log('Update status:', data);
+        setUpdateStatus(data);
+        
+        if (data.status === 'available') {
+          setUpdateInfo(prev => ({
+            ...prev,
+            hasUpdate: true,
+            latestVersion: data.version,
+            releaseNotes: data.releaseNotes,
+            releaseDate: data.releaseDate
+          }));
+          toast.success(`🎉 Update v${data.version} available!`, { duration: 8000 });
+        } else if (data.status === 'downloaded') {
+          toast.success('✅ Update downloaded and ready to install!', { duration: 5000 });
+          setDownloadingUpdate(false);
+          setDownloadProgress(100);
+        } else if (data.status === 'checking') {
+          toast.loading('Checking for updates...', { id: 'update-check' });
+        } else if (data.status === 'not-available') {
+          toast.success('✅ You have the latest version', { id: 'update-check', duration: 3000 });
+        }
+      });
+      
+      // Listen for download progress
+      const cleanupProgress = window.electronAPI.onUpdateProgress((data) => {
+        console.log('Download progress:', data);
+        setDownloadProgress(data.percent || 0);
+        if (data.percent && data.percent < 100) {
+          toast.loading(`Downloading update: ${data.percent}%`, { id: 'update-download' });
+        } else if (data.percent === 100) {
+          toast.success('Download complete! Installing...', { id: 'update-download', duration: 2000 });
+        }
+      });
+      
+      // Listen for errors
+      const cleanupError = window.electronAPI.onUpdateError((data) => {
+        console.error('Update error:', data);
+        setUpdateError(data.error);
+        setDownloadingUpdate(false);
+        toast.error(`❌ Update error: ${data.error}`, { duration: 5000 });
+      });
+      
+      // Cleanup listeners on unmount
+      return () => {
+        cleanupStatus();
+        cleanupProgress();
+        cleanupError();
+      };
+    }
+  }, [isAdmin]);
 
   const fetchAppInfo = async () => {
     try {
@@ -80,122 +135,109 @@ const Settings = () => {
       setCheckingUpdate(true);
       setUpdateError(null);
       
-      // Check both frontend and backend repos
-      const [frontendResult, backendResult] = await Promise.all([
-        SettingsService.checkForUpdates('pos-system', false),
-        isAdmin ? SettingsService.checkForUpdates('pos-system-backend', true) : Promise.resolve({ success: true, data: null })
-      ]);
+      if (!silent) {
+        toast.loading('Checking for updates...', { id: 'update-check' });
+      }
       
-      const hasUpdate = frontendResult?.data?.hasUpdate || backendResult?.data?.hasUpdate;
+      const result = await SettingsService.checkForUpdates();
       
-      if (hasUpdate) {
+      if (result?.success && result.data?.hasUpdate) {
         setUpdateInfo({
-          frontend: frontendResult.data,
-          backend: isAdmin ? backendResult.data : null,
-          hasUpdate: true
+          hasUpdate: true,
+          currentVersion: result.data.currentVersion,
+          latestVersion: result.data.latestVersion,
+          releaseNotes: result.data.releaseNotes,
+          releaseDate: result.data.releaseDate
         });
-        
         if (!silent) {
-          toast.success('🔄 New update available!', {
-            duration: 5000,
-            icon: '🎉'
-          });
+          toast.success(`🎉 Update v${result.data.latestVersion} available!`, { id: 'update-check', duration: 8000 });
         }
-      } else {
-        setUpdateInfo({ hasUpdate: false });
+      } else if (result?.success && !result.data?.hasUpdate) {
         if (!silent) {
-          toast.success('✅ You have the latest version');
+          toast.success('✅ You have the latest version', { id: 'update-check', duration: 3000 });
         }
+      } else if (!silent) {
+        toast.error(result?.error || 'Failed to check for updates', { id: 'update-check' });
       }
       
     } catch (error) {
       console.error('Check updates error:', error);
       setUpdateError('Failed to check for updates');
       if (!silent) {
-        toast.error('❌ Failed to check for updates');
+        toast.error('❌ Failed to check for updates', { id: 'update-check' });
       }
     } finally {
       setCheckingUpdate(false);
     }
   };
 
-  // Install update
-  const handleInstallUpdate = async () => {
-    if (!updateInfo?.hasUpdate) return;
+  // Download and install update
+  const handleDownloadUpdate = async () => {
+    if (!updateInfo?.hasUpdate) {
+      toast.error('No update available to download');
+      return;
+    }
     
     try {
-      setInstallingUpdate(true);
+      setDownloadingUpdate(true);
       setUpdateError(null);
+      setDownloadProgress(0);
       
       // Confirm with user
-      if (!window.confirm('⚠️ This will update the application and restart it.\n\nYour data will be backed up automatically.\n\nContinue?')) {
-        setInstallingUpdate(false);
+      const confirmed = window.confirm(
+        `⚠️ Download and install update to v${updateInfo.latestVersion}?\n\n` +
+        `Current version: v${updateInfo.currentVersion}\n` +
+        `New version: v${updateInfo.latestVersion}\n\n` +
+        `What's new:\n${updateInfo.releaseNotes || 'Bug fixes and improvements'}\n\n` +
+        `The app will restart automatically after installation.\n\n` +
+        `Continue?`
+      );
+      
+      if (!confirmed) {
+        setDownloadingUpdate(false);
         return;
       }
       
-      // Show backup in progress
-      toast.loading('🔄 Backing up database...', { id: 'update-toast' });
+      toast.loading('Starting download...', { id: 'update-download' });
       
-      // For demo: simulate download progress
-      const simulateProgress = () => {
-        let progress = 0;
-        const interval = setInterval(() => {
-          progress += Math.random() * 15;
-          if (progress >= 100) {
-            progress = 100;
-            clearInterval(interval);
-          }
-          setDownloadProgress(Math.min(100, Math.round(progress)));
-          toast.loading(`📥 Downloading update... ${Math.min(100, Math.round(progress))}%`, { id: 'update-toast' });
-        }, 200);
-        return interval;
-      };
+      // Call download update
+      const result = await SettingsService.downloadUpdate();
       
-      const progressInterval = simulateProgress();
-      
-      // In production, call actual install endpoint:
-      // const result = await SettingsService.installUpdate({
-      //   downloadUrl: updateInfo.frontend?.downloadUrl,
-      //   version: updateInfo.frontend?.latestVersion,
-      //   isBackend: false
-      // });
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      clearInterval(progressInterval);
-      toast.success('✅ Update downloaded!', { id: 'update-toast' });
-      
-      // Simulate installation
-      toast.loading('🔧 Installing update...', { id: 'update-toast' });
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      toast.success('✅ Update installed! Restarting...', { 
-        id: 'update-toast',
-        duration: 3000 
-      });
-      
-      // In production: await SettingsService.installUpdate(...)
-      
-      // Restart app (for Electron)
-      setTimeout(() => {
-        if (window.electronAPI) {
-          window.electronAPI.restartApp();
-        } else {
-          window.location.reload();
-        }
-      }, 3000);
+      if (result?.success) {
+        toast.loading('Downloading update...', { id: 'update-download' });
+        // The download progress will be handled by IPC listeners
+      } else {
+        throw new Error(result?.error || 'Failed to start download');
+      }
       
     } catch (error) {
+      console.error('Download update error:', error);
+      setUpdateError(error.message);
+      setDownloadingUpdate(false);
+      toast.error(`❌ Update failed: ${error.message}`, { id: 'update-download', duration: 5000 });
+    }
+  };
+
+  // Install downloaded update (manual trigger if needed)
+  const handleInstallUpdate = async () => {
+    try {
+      toast.loading('Installing update...', { id: 'update-install' });
+      const result = await SettingsService.installUpdate();
+      if (result?.success) {
+        toast.success('Update installed! Restarting...', { id: 'update-install', duration: 2000 });
+        setTimeout(() => {
+          if (window.electronAPI?.restartApp) {
+            window.electronAPI.restartApp();
+          } else {
+            window.location.reload();
+          }
+        }, 2000);
+      } else {
+        throw new Error(result?.error || 'Installation failed');
+      }
+    } catch (error) {
       console.error('Install update error:', error);
-      setUpdateError('Update installation failed');
-      toast.error('❌ Update failed. Your data is safe.', { 
-        id: 'update-toast',
-        duration: 5000 
-      });
-    } finally {
-      setInstallingUpdate(false);
-      setDownloadProgress(0);
+      toast.error(`❌ Installation failed: ${error.message}`, { id: 'update-install' });
     }
   };
 
@@ -208,7 +250,6 @@ const Settings = () => {
   const handleUpdateCredentials = async (e) => {
     e.preventDefault();
     
-    // Validation
     if (accountForm.newPassword && accountForm.newPassword.length < 6) {
       toast.error('❌ New password must be at least 6 characters');
       return;
@@ -235,26 +276,18 @@ const Settings = () => {
       
       if (response?.success) {
         toast.success('✅ Credentials updated successfully');
-        
-        // Update local auth context if username changed
         if (response.data?.username && response.data.username !== user?.username) {
           updateUserData({ username: response.data.username });
         }
-        
-        // If new token provided, update storage
         if (response.data?.newToken) {
           localStorage.setItem('token', response.data.newToken);
         }
-        
-        // Reset form
         setAccountForm({
           currentPassword: '',
           newUsername: '',
           newPassword: '',
           confirmNewPassword: ''
         });
-        
-        // Refresh profile
         fetchProfile();
       } else {
         toast.error(response?.error || '❌ Failed to update credentials');
@@ -267,7 +300,6 @@ const Settings = () => {
     }
   };
 
-  // Format bytes to human readable
   const formatBytes = (bytes) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -276,19 +308,42 @@ const Settings = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString();
+    } catch {
+      return dateString;
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-indigo-50/30">
       <Toaster position="top-right" />
       <Sidebar />
       
       <main className="flex-1 flex flex-col">
-        {/* Header */}
         <header className="bg-white shadow-sm border-b px-6 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
               <p className="text-sm text-gray-500 mt-1">Manage application and account settings</p>
             </div>
+            {updateStatus?.status === 'downloaded' && (
+              <button
+                onClick={handleInstallUpdate}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                <span>📦</span>
+                <span>Install Update Now</span>
+              </button>
+            )}
+            {updateStatus?.status === 'available' && !downloadingUpdate && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-100 text-amber-800 rounded-full text-sm font-medium">
+                <span>🔄</span>
+                <span>Update v{updateStatus.version} ready</span>
+              </div>
+            )}
           </div>
         </header>
         
@@ -298,9 +353,7 @@ const Settings = () => {
             {/* 🔄 Software Update Section */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white text-xl">
-                  🔄
-                </div>
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white text-xl">🔄</div>
                 <div>
                   <h2 className="font-bold text-gray-900">Software Update</h2>
                   <p className="text-xs text-gray-500">Keep your POS system up to date</p>
@@ -311,64 +364,72 @@ const Settings = () => {
               <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Current Version</span>
-                  <span className="font-mono font-bold text-gray-900">
-                    v{appInfo?.version || '1.0.0'}
-                  </span>
+                  <span className="font-mono font-bold text-gray-900">v{appInfo?.version || '1.0.0'}</span>
                 </div>
-                {appInfo?.lastUpdateCheck && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    Last checked: {new Date(appInfo.lastUpdateCheck).toLocaleString()}
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-sm text-gray-600">Environment</span>
+                  <span className="text-xs font-mono text-gray-500">{appInfo?.environment || 'production'}</span>
+                </div>
+                {appInfo?.userDataPath && (
+                  <p className="text-xs text-gray-400 mt-1 truncate" title={appInfo.userDataPath}>
+                    Data: {appInfo.userDataPath.split(/[/\\]/).pop()}
                   </p>
                 )}
               </div>
               
               {/* Update Status */}
-              {updateInfo?.hasUpdate ? (
+              {updateInfo?.hasUpdate && (
                 <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                   <div className="flex items-start gap-3">
                     <span className="text-2xl">🎉</span>
                     <div className="flex-1">
                       <p className="font-bold text-amber-800">Update Available!</p>
                       <p className="text-sm text-amber-700 mt-1">
-                        v{updateInfo.frontend?.currentVersion} → v{updateInfo.frontend?.latestVersion}
+                        v{updateInfo.currentVersion} → v{updateInfo.latestVersion}
                       </p>
-                      {updateInfo.frontend?.releaseName && (
-                        <p className="text-sm text-amber-700 font-medium mt-1">
-                          {updateInfo.frontend.releaseName}
+                      {updateInfo.releaseDate && (
+                        <p className="text-xs text-amber-600 mt-1">
+                          Released: {formatDate(updateInfo.releaseDate)}
                         </p>
                       )}
                     </div>
                   </div>
-                  
-                  {/* Release Notes */}
-                  {updateInfo.frontend?.releaseNotes && (
+                  {updateInfo.releaseNotes && (
                     <div className="mt-3 p-3 bg-white rounded border border-amber-100">
                       <p className="text-xs font-medium text-amber-800 mb-1">What's New:</p>
-                      <p className="text-xs text-amber-700 whitespace-pre-wrap line-clamp-3">
-                        {updateInfo.frontend.releaseNotes}
+                      <p className="text-xs text-amber-700 whitespace-pre-wrap max-h-32 overflow-y-auto">
+                        {updateInfo.releaseNotes}
                       </p>
                     </div>
                   )}
                 </div>
-              ) : updateInfo && !updateInfo.hasUpdate ? (
+              )}
+              
+              {updateInfo && !updateInfo.hasUpdate && !checkingUpdate && (
                 <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-sm text-green-700 font-medium">✅ You have the latest version</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">✅</span>
+                    <p className="text-sm text-green-700 font-medium">You have the latest version</p>
+                  </div>
                 </div>
-              ) : null}
+              )}
               
               {/* Download Progress */}
-              {installingUpdate && downloadProgress > 0 && (
+              {downloadingUpdate && (
                 <div className="mb-4">
                   <div className="flex justify-between text-xs text-gray-600 mb-1">
-                    <span>Downloading...</span>
+                    <span>Downloading update...</span>
                     <span>{downloadProgress}%</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                     <div 
-                      className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                      className="bg-indigo-600 h-2 rounded-full transition-all duration-300 ease-out" 
                       style={{ width: `${downloadProgress}%` }}
                     ></div>
                   </div>
+                  {downloadProgress === 100 && (
+                    <p className="text-xs text-green-600 mt-1 text-center">Download complete! Installing...</p>
+                  )}
                 </div>
               )}
               
@@ -376,6 +437,12 @@ const Settings = () => {
               {updateError && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                   <p className="text-sm text-red-700">❌ {updateError}</p>
+                  <button
+                    onClick={() => setUpdateError(null)}
+                    className="text-xs text-red-600 hover:text-red-800 mt-1"
+                  >
+                    Dismiss
+                  </button>
                 </div>
               )}
               
@@ -383,12 +450,12 @@ const Settings = () => {
               <div className="flex gap-3">
                 <button
                   onClick={() => handleCheckUpdates(false)}
-                  disabled={checkingUpdate || installingUpdate}
+                  disabled={checkingUpdate || downloadingUpdate}
                   className="flex-1 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
                 >
                   {checkingUpdate ? (
                     <>
-                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                       </svg>
@@ -399,46 +466,55 @@ const Settings = () => {
                   )}
                 </button>
                 
-                {updateInfo?.hasUpdate && (
+                {updateInfo?.hasUpdate && !downloadingUpdate && updateStatus?.status !== 'downloaded' && (
                   <button
-                    onClick={handleInstallUpdate}
-                    disabled={installingUpdate}
+                    onClick={handleDownloadUpdate}
+                    disabled={checkingUpdate || downloadingUpdate}
                     className="flex-1 py-2.5 px-4 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
                   >
-                    {installingUpdate ? (
+                    {downloadingUpdate ? (
                       <>
-                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                         </svg>
-                        Installing...
+                        Downloading...
                       </>
                     ) : (
-                      '⬇️ Install Update'
+                      `⬇️ Download v${updateInfo.latestVersion}`
                     )}
+                  </button>
+                )}
+                
+                {updateStatus?.status === 'downloaded' && (
+                  <button
+                    onClick={handleInstallUpdate}
+                    className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                  >
+                    <span>📦</span>
+                    Install Now
                   </button>
                 )}
               </div>
               
-              {/* Safety Notice */}
               <p className="text-xs text-gray-400 mt-4 text-center">
                 🔒 Your database is automatically backed up before any update
+              </p>
+              <p className="text-xs text-gray-400 mt-1 text-center">
+                Updates are downloaded from GitHub and installed automatically
               </p>
             </div>
             
             {/* 👤 Account Settings Section */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-xl">
-                  👤
-                </div>
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-xl">👤</div>
                 <div>
                   <h2 className="font-bold text-gray-900">Account Settings</h2>
                   <p className="text-xs text-gray-500">Update your login credentials</p>
                 </div>
               </div>
               
-              {/* Current User Info */}
               <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Logged in as</span>
@@ -446,162 +522,136 @@ const Settings = () => {
                 </div>
                 <div className="flex justify-between items-center mt-2">
                   <span className="text-sm text-gray-600">Role</span>
-                  <span className="px-2 py-0.5 bg-gray-200 rounded text-xs font-medium capitalize">
-                    {user?.role}
-                  </span>
+                  <span className="px-2 py-0.5 bg-gray-200 rounded text-xs font-medium capitalize">{user?.role}</span>
                 </div>
+                {profile?.email && (
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-sm text-gray-600">Email</span>
+                    <span className="text-sm text-gray-700">{profile.email}</span>
+                  </div>
+                )}
               </div>
               
-              {/* Update Credentials Form */}
               <form onSubmit={handleUpdateCredentials} className="space-y-4">
-                {/* Current Password */}
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">
                     Current Password <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="password"
-                    value={accountForm.currentPassword}
-                    onChange={(e) => handleAccountChange('currentPassword', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="••••••••"
-                    required
+                  <input 
+                    type="password" 
+                    value={accountForm.currentPassword} 
+                    onChange={(e) => handleAccountChange('currentPassword', e.target.value)} 
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                    placeholder="••••••••" 
+                    required 
                   />
                 </div>
                 
-                {/* New Username */}
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">
                     New Username (Optional)
                   </label>
-                  <input
-                    type="text"
-                    value={accountForm.newUsername}
-                    onChange={(e) => handleAccountChange('newUsername', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Enter new username"
-                    minLength={3}
+                  <input 
+                    type="text" 
+                    value={accountForm.newUsername} 
+                    onChange={(e) => handleAccountChange('newUsername', e.target.value)} 
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                    placeholder="Enter new username" 
+                    minLength={3} 
                   />
-                  <p className="text-xs text-gray-400 mt-1">Min 3 characters</p>
+                  <p className="text-xs text-gray-400 mt-1">Min 3 characters, leave empty to keep current</p>
                 </div>
                 
-                {/* New Password */}
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1">
                     New Password (Optional)
                   </label>
-                  <input
-                    type="password"
-                    value={accountForm.newPassword}
-                    onChange={(e) => handleAccountChange('newPassword', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="••••••••"
-                    minLength={6}
+                  <input 
+                    type="password" 
+                    value={accountForm.newPassword} 
+                    onChange={(e) => handleAccountChange('newPassword', e.target.value)} 
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                    placeholder="••••••••" 
+                    minLength={6} 
                   />
-                  <p className="text-xs text-gray-400 mt-1">Min 6 characters</p>
+                  <p className="text-xs text-gray-400 mt-1">Min 6 characters, leave empty to keep current</p>
                 </div>
                 
-                {/* Confirm New Password */}
                 {accountForm.newPassword && (
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">
                       Confirm New Password <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="password"
-                      value={accountForm.confirmNewPassword}
-                      onChange={(e) => handleAccountChange('confirmNewPassword', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="••••••••"
-                      required={!!accountForm.newPassword}
+                    <input 
+                      type="password" 
+                      value={accountForm.confirmNewPassword} 
+                      onChange={(e) => handleAccountChange('confirmNewPassword', e.target.value)} 
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                      placeholder="••••••••" 
+                      required={!!accountForm.newPassword} 
                     />
                   </div>
                 )}
                 
-                {/* Submit */}
-                <button
-                  type="submit"
-                  disabled={accountLoading}
-                  className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                <button 
+                  type="submit" 
+                  disabled={accountLoading} 
+                  className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {accountLoading ? (
                     <>
-                      <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                      <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                       </svg>
                       Updating...
                     </>
-                  ) : '💾 Update Credentials'}
+                  ) : (
+                    '💾 Update Credentials'
+                  )}
                 </button>
               </form>
             </div>
             
-            {/* ⚙️ System Info (Admin Only) */}
-            {isAdmin && (
-              <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center text-white text-xl">
-                      ⚙️
-                    </div>
-                    <div>
-                      <h2 className="font-bold text-gray-900">System Information</h2>
-                      <p className="text-xs text-gray-500">Technical details for diagnostics</p>
-                    </div>
-                  </div>
-                  
-                  <button
-                    onClick={() => {
-                      setShowSystemInfo(!showSystemInfo);
-                      if (!showSystemInfo && !systemInfo) {
-                        fetchSystemInfo();
-                      }
-                    }}
-                    className="px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                  >
-                    {showSystemInfo ? 'Hide Details' : 'Show Details'} →
-                  </button>
-                </div>
-                
-                {showSystemInfo && systemInfo && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <p className="text-xs text-gray-500">Platform</p>
-                      <p className="font-mono font-bold text-gray-900">{systemInfo.platform}</p>
-                    </div>
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <p className="text-xs text-gray-500">Architecture</p>
-                      <p className="font-mono font-bold text-gray-900">{systemInfo.arch}</p>
-                    </div>
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <p className="text-xs text-gray-500">Node Version</p>
-                      <p className="font-mono font-bold text-gray-900">{systemInfo.nodeVersion}</p>
-                    </div>
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <p className="text-xs text-gray-500">Uptime</p>
-                      <p className="font-mono font-bold text-gray-900">
-                        {Math.floor(systemInfo.uptime / 60)}m {Math.round(systemInfo.uptime % 60)}s
-                      </p>
-                    </div>
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <p className="text-xs text-gray-500">Memory (Free/Total)</p>
-                      <p className="font-mono font-bold text-gray-900">
-                        {formatBytes(systemInfo.memory.free * 1024 * 1024)} / {formatBytes(systemInfo.memory.total * 1024 * 1024)}
-                      </p>
-                    </div>
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <p className="text-xs text-gray-500">Database Size</p>
-                      <p className="font-mono font-bold text-gray-900">
-                        {formatBytes(systemInfo.database.size * 1024)}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            
           </div>
+          
+          {/* System Info Section (Admin only) */}
+          {isAdmin && (
+            <div className="mt-6">
+              <button
+                onClick={() => {
+                  if (!systemInfo) fetchSystemInfo();
+                  setShowSystemInfo(!showSystemInfo);
+                }}
+                className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
+              >
+                <span>🖥️</span>
+                <span>{showSystemInfo ? 'Hide' : 'Show'} System Information</span>
+              </button>
+              
+              {showSystemInfo && systemInfo && (
+                <div className="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <h3 className="font-medium text-gray-900 mb-2">System Diagnostics</h3>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <span className="text-gray-600">Platform:</span>
+                    <span className="text-gray-900">{systemInfo.platform}</span>
+                    <span className="text-gray-600">Architecture:</span>
+                    <span className="text-gray-900">{systemInfo.arch}</span>
+                    <span className="text-gray-600">Node Version:</span>
+                    <span className="text-gray-900">{systemInfo.nodeVersion}</span>
+                    <span className="text-gray-600">Memory Total:</span>
+                    <span className="text-gray-900">{formatBytes(systemInfo.memory?.total)}</span>
+                    <span className="text-gray-600">Memory Free:</span>
+                    <span className="text-gray-900">{formatBytes(systemInfo.memory?.free)}</span>
+                    <span className="text-gray-600">Database Size:</span>
+                    <span className="text-gray-900">{formatBytes(systemInfo.database?.size * 1024)}</span>
+                    <span className="text-gray-600">Uptime:</span>
+                    <span className="text-gray-900">{Math.floor(systemInfo.uptime / 60)} minutes</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </main>
     </div>

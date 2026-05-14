@@ -434,7 +434,7 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
                 onClick={() => setPreviewProduct(null)}
                 className="text-gray-400 hover:text-gray-600"
               >✕</button>
-            </div>
+            </div> 
             <BarcodeGenerator
               barcode={previewProduct.barcode}
               item_name={previewProduct.item_name}

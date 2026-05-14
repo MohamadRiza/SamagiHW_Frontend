@@ -24,3 +24,51 @@ dist-ssr
 *.sw?
 
 noteSH
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+release/
+build/
+*.exe
+*.dmg
+*.AppImage
+*.yml
+*.yaml
+
+# Electron
+electron-dist/
+*.asar
+
+# Database & sensitive data
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+backups/
+uploads/
+.env
+.env.local
+.env*.local
+
+# IDE & OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Testing
+coverage/
+*.lcov
+
+# Electron builder cache
+electron-builder-cache/

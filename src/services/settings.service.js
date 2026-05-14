@@ -1,123 +1,61 @@
 import api from './api';
 
-const SettingsService = {
+class SettingsService {
   // Get app info
-  getAppInfo: async () => {
-    try {
-      const response = await api.get('/settings/app-info');
-      return {
-        success: response.data?.success || false,
-        data: response.data?.data || null,
-        error: response.data?.error || null
-      };
-    } catch (error) {
-      console.error('Get app info error:', error);
-      return {
-        success: false,
-        data: null,
-        error: error.response?.data?.error || error.message || 'Network error'
-      };
+  async getAppInfo() {
+    // Check if electron API is available
+    if (window.electronAPI) {
+      return await window.electronAPI.getAppInfo();
     }
-  },
+    // Fallback to HTTP
+    const response = await api.get('/settings/app-info');
+    return response.data;
+  }
   
   // Check for updates
-  checkForUpdates: async (repo = null, isBackend = false) => {
-    try {
-      const params = new URLSearchParams();
-      if (repo) params.append('repo', repo);
-      if (isBackend) params.append('isBackend', 'true');
-      
-      const response = await api.get(`/settings/check-updates?${params.toString()}`);
-      return {
-        success: response.data?.success || false,
-        data: response.data?.data || null,
-        error: response.data?.error || null
-      };
-    } catch (error) {
-      console.error('Check updates error:', error);
-      return {
-        success: false,
-        data: null,
-        error: error.response?.data?.error || error.message || 'Network error'
-      };
+  async checkForUpdates() {
+    if (window.electronAPI) {
+      return await window.electronAPI.checkForUpdates();
     }
-  },
+    const response = await api.get('/settings/check-updates');
+    return response.data;
+  }
   
-  // Install update
-  installUpdate: async (updateData) => {
-    try {
-      const response = await api.post('/settings/install-update', updateData);
-      return {
-        success: response.data?.success || false,
-        data: response.data?.data || null,
-        error: response.data?.error || null
-      };
-    } catch (error) {
-      console.error('Install update error:', error);
-      return {
-        success: false,
-        data: null,
-        error: error.response?.data?.error || error.message || 'Network error'
-      };
+  // Download update
+  async downloadUpdate() {
+    if (window.electronAPI) {
+      return await window.electronAPI.downloadUpdate();
     }
-  },
+    const response = await api.post('/settings/install-update');
+    return response.data;
+  }
   
-  // Get user profile
-  getProfile: async () => {
-    try {
-      const response = await api.get('/settings/profile');
-      return {
-        success: response.data?.success || false,
-        data: response.data?.data?.user || null,
-        error: response.data?.error || null
-      };
-    } catch (error) {
-      console.error('Get profile error:', error);
-      return {
-        success: false,
-        data: null,
-        error: error.response?.data?.error || error.message || 'Network error'
-      };
+  // Install update (restart app)
+  async installUpdate() {
+    if (window.electronAPI) {
+      return await window.electronAPI.installUpdate();
     }
-  },
+    const response = await api.post('/settings/install-update');
+    return response.data;
+  }
   
   // Update credentials
-  updateCredentials: async (credentials) => {
-    try {
-      const response = await api.put('/settings/credentials', credentials);
-      return {
-        success: response.data?.success || false,
-        data: response.data?.data || null,
-        error: response.data?.error || null
-      };
-    } catch (error) {
-      console.error('Update credentials error:', error);
-      return {
-        success: false,
-        data: null,
-        error: error.response?.data?.error || error.message || 'Network error'
-      };
-    }
-  },
+  async updateCredentials(data) {
+    const response = await api.put('/settings/credentials', data);
+    return response.data;
+  }
+  
+  // Get user profile
+  async getProfile() {
+    const response = await api.get('/settings/profile');
+    return response.data;
+  }
   
   // Get system info
-  getSystemInfo: async () => {
-    try {
-      const response = await api.get('/settings/system-info');
-      return {
-        success: response.data?.success || false,
-        data: response.data?.data || null,
-        error: response.data?.error || null
-      };
-    } catch (error) {
-      console.error('Get system info error:', error);
-      return {
-        success: false,
-        data: null,
-        error: error.response?.data?.error || error.message || 'Network error'
-      };
-    }
+  async getSystemInfo() {
+    const response = await api.get('/settings/system-info');
+    return response.data;
   }
-};
+}
 
-export default SettingsService;
+export default new SettingsService();
