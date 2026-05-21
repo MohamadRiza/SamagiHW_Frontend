@@ -88,9 +88,9 @@ const Login = () => {
             <div className="max-w-lg text-center">
               <div className="mb-8 flex justify-center">
                 <img 
-                  src="/samagi_Logo.png" 
+                  src="/Logo.jpg" 
                   alt="Samagi Motors" 
-                  className="h-32 w-auto object-contain drop-shadow-2xl"
+                  className="h-32 w-auto object-contain drop-shadow-2xl rounded-lg"
                 />
               </div>
               <h1 className="text-5xl font-bold mb-6 leading-tight">

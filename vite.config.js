@@ -3,22 +3,19 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: './',  // ✅ CRITICAL for Electron file:// protocol
+  base: './',
   server: {
     port: 3003,
-    strictPort: true,
     proxy: {
       '/api': {
         target: 'http://localhost:5000',
-        changeOrigin: true,
-        secure: false,
-        ws: true
+        changeOrigin: true
       }
     }
   },
   build: {
     outDir: 'dist',
-    emptyOutDir: true,
-    sourcemap: false
+    sourcemap: true, // Enable sourcemaps for debugging
+    minify: false // Disable minification for debugging
   }
 })

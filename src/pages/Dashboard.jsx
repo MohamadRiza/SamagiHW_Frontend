@@ -479,7 +479,7 @@ const Dashboard = () => {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                   <h2 className="text-2xl lg:text-3xl font-bold text-gray-900">
-                    Welcome back, {user?.full_name || user?.username} 👋
+                    Welcome back, {user?.full_name || user?.username}
                   </h2>
                   <p className="text-gray-600 mt-1.5 text-sm lg:text-base">
                     {isAdmin() 

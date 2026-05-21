@@ -1721,173 +1721,377 @@ const CashBilling = () => {
       return null;
     }
   };
-
+ 
   const openCashReceiptPrint = (billData, cartItems, paymentMethod) => {
-    const printWindow = window.open('', '_blank', 'width=400,height=600');
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Receipt - ${billData.billNumber}</title>
-        <style>
-          @page { size: 80mm auto; margin: 0; }
-          body { font-family: 'Courier New', monospace; font-size: 11px; padding: 8px; margin: 0; background: #fff; color: #000; }
-          .header { text-align: center; margin-bottom: 8px; border-bottom: 2px dashed #000; padding-bottom: 8px; }
-          .header h2 { margin: 0; font-size: 16px; font-weight: bold; }
-          .header p { margin: 2px 0; font-size: 10px; }
-          .bill-info { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 10px; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-          th { text-align: left; border-bottom: 1px solid #000; padding: 3px 0; font-size: 10px; font-weight: bold; }
-          td { padding: 3px 0; font-size: 10px; vertical-align: top; }
-          .totals { border-top: 2px dashed #000; padding-top: 6px; margin-top: 6px; }
-          .totals div { display: flex; justify-content: space-between; margin: 3px 0; font-size: 11px; }
-          .grand-total { font-weight: bold; font-size: 14px; border-top: 1px solid #000; padding-top: 4px; margin-top: 4px; }
-          .payment-info { text-align: center; margin: 8px 0; padding: 4px; background: #f0f0f0; font-weight: bold; }
-          .footer { text-align: center; margin-top: 12px; font-size: 9px; border-top: 1px dashed #000; padding-top: 6px; }
-          .audit { font-size: 8px; color: #666; margin-top: 8px; text-align: center; }
-          @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h2>SAMAGI HARDWARE</h2>
-          <p>POS System - ${paymentMethod} Bill</p>
-          <p>${new Date().toLocaleString('en-LK')}</p>
+  const printWindow = window.open('', '_blank', 'width=400,height=700');
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Receipt - ${billData.billNumber}</title>
+      <style>
+        @page { size: 80mm auto; margin: 0; }
+        body { 
+          font-family: 'Courier New', monospace; 
+          font-size: 11px; 
+          padding: 8px; 
+          margin: 0; 
+          background: #fff; 
+          color: #000;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        .header { 
+          text-align: center; 
+          margin-bottom: 8px; 
+          border-bottom: 2px dashed #000; 
+          padding-bottom: 8px; 
+        }
+        .header h2 { 
+          margin: 0; 
+          font-size: 18px; 
+          font-weight: bold; 
+          text-transform: uppercase;
+        }
+        .header .company-info {
+          font-size: 10px;
+          margin: 4px 0;
+          line-height: 1.4;
+        }
+        .header .bill-type {
+          font-size: 12px;
+          font-weight: bold;
+          margin-top: 4px;
+        }
+        .date-time {
+          text-align: right;
+          font-size: 10px;
+          margin-top: 4px;
+        }
+        .bill-info { 
+          display: flex; 
+          justify-content: space-between; 
+          margin-bottom: 6px; 
+          font-size: 10px; 
+          border-bottom: 1px solid #ccc; 
+          padding-bottom: 4px; 
+        }
+        table { 
+          width: 100%; 
+          border-collapse: collapse; 
+          margin-bottom: 8px; 
+        }
+        th { 
+          text-align: left; 
+          border-bottom: 2px solid #000; 
+          padding: 4px 0; 
+          font-size: 10px; 
+          font-weight: bold; 
+        }
+        td { 
+          padding: 4px 0; 
+          font-size: 10px; 
+          vertical-align: top; 
+        }
+        .totals { 
+          border-top: 2px dashed #000; 
+          padding-top: 6px; 
+          margin-top: 6px; 
+        }
+        .totals div { 
+          display: flex; 
+          justify-content: space-between; 
+          margin: 3px 0; 
+          font-size: 11px; 
+        }
+        .grand-total { 
+          font-weight: bold; 
+          font-size: 14px; 
+          border-top: 2px solid #000; 
+          padding-top: 4px; 
+          margin-top: 4px; 
+        }
+        .payment-info { 
+          text-align: center; 
+          margin: 8px 0; 
+          padding: 4px; 
+          background: #f0f0f0; 
+          font-weight: bold; 
+          border: 1px solid #000;
+        }
+        .footer { 
+          text-align: center; 
+          margin-top: 12px; 
+          font-size: 9px; 
+          border-top: 2px dashed #000; 
+          padding-top: 6px; 
+        }
+        .audit { 
+          font-size: 8px; 
+          color: #333; 
+          margin-top: 8px; 
+          text-align: center; 
+        }
+        @media print { 
+          body { 
+            -webkit-print-color-adjust: exact; 
+            print-color-adjust: exact;
+            print-adjust: exact;
+          }
+          @page { margin: 0; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h2>SAMAGI MOTORS</h2>
+        <div class="company-info">
+          <div>TP: 077 779 7410</div>
+          <div>Madagalle Road, Kubukgate</div>
+          <div>(Kurunegala)</div>
         </div>
-        <div class="bill-info">
-          <span>Bill #: ${billData.billNumber}</span>
-          <span>Cashier: ${billData.cashier}</span>
-        </div>
-        <table>
-          <thead>
+        <div class="bill-type">POS SYSTEM - ${paymentMethod} BILL</div>
+        <div class="date-time">${new Date().toLocaleString('en-LK')}</div>
+      </div>
+      <div class="bill-info">
+        <span>Bill #: ${billData.billNumber}</span>
+        <span>Cashier: ${billData.cashier}</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:45%">Item</th>
+            <th style="text-align:center">Qty</th>
+            <th style="text-align:right">Price</th>
+            <th style="text-align:right">Disc</th>
+            <th style="text-align:right">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${Array.isArray(cartItems) ? cartItems.map(item => `
             <tr>
-              <th style="width:45%">Item</th>
-              <th style="text-align:center">Qty</th>
-              <th style="text-align:right">Price</th>
-              <th style="text-align:right">Disc</th>
-              <th style="text-align:right">Total</th>
+              <td>${item.product_name}<br><span style="font-size:9px;color:#333">${item.barcode}</span></td>
+              <td style="text-align:center">${item.quantity}</td>
+              <td style="text-align:right">${(item.unit_price || 0).toFixed(2)}</td>
+              <td style="text-align:right;color:#c00">${(item.discount_lkr || 0) > 0 ? '-' + ((item.discount_lkr * item.quantity) || 0).toFixed(2) : '-'}</td>
+              <td style="text-align:right;font-weight:bold">${(((item.unit_price || 0) * (item.quantity || 1)) - ((item.discount_lkr || 0) * (item.quantity || 1))).toFixed(2)}</td>
             </tr>
-          </thead>
-          <tbody>
-            ${Array.isArray(cartItems) ? cartItems.map(item => `
-              <tr>
-                <td>${item.product_name}<br><span style="font-size:9px;color:#666">${item.barcode}</span></td>
-                <td style="text-align:center">${item.quantity}</td>
-                <td style="text-align:right">${(item.unit_price || 0).toFixed(2)}</td>
-                <td style="text-align:right;color:red">${(item.discount_lkr || 0) > 0 ? '-' + ((item.discount_lkr * item.quantity) || 0).toFixed(2) : '-'}</td>
-                <td style="text-align:right;font-weight:bold">${(((item.unit_price || 0) * (item.quantity || 1)) - ((item.discount_lkr || 0) * (item.quantity || 1))).toFixed(2)}</td>
-              </tr>
-            `).join('') : ''}
-          </tbody>
-        </table>
-        <div class="totals">
-          <div><span>Subtotal:</span><span>LKR ${totalAmount.toFixed(2)}</span></div>
-          <div style="color:red"><span>Discount:</span><span>- LKR ${totalDiscount.toFixed(2)}</span></div>
-          <div class="grand-total"><span>TOTAL:</span><span>LKR ${grandTotal.toFixed(2)}</span></div>
-          <div class="payment-info">PAYMENT: ${paymentMethod}</div>
-        </div>
-        <div class="footer">
-          <p>Thank you for shopping with us!</p>
-          <p>Goods once sold cannot be returned</p>
-        </div>
-        <div class="audit">
-          Audit: ${billData.billNumber} | ${new Date().toISOString()} | Cashier: ${billData.cashier}
-        </div>
-        <script>
-          window.onload = () => { setTimeout(() => window.print(), 300); };
-        <\/script>
-      </body>
-      </html>
-    `);
-    printWindow.document.close();
-  };
+          `).join('') : ''}
+        </tbody>
+      </table>
+      <div class="totals">
+        <div><span>Subtotal:</span><span>LKR ${totalAmount.toFixed(2)}</span></div>
+        <div style="color:#c00"><span>Discount:</span><span>- LKR ${totalDiscount.toFixed(2)}</span></div>
+        <div class="grand-total"><span>TOTAL:</span><span>LKR ${grandTotal.toFixed(2)}</span></div>
+        <div class="payment-info">PAYMENT: ${paymentMethod}</div>
+      </div>
+      <div class="footer">
+        <p>Thank you for shopping with us!</p>
+        <p>Goods once sold cannot be returned</p>
+        <p>TP: 077 779 7410 | Madagalle Road, Kubukgate, Kurunegala</p>
+      </div>
+      <div class="audit">
+        Audit: ${billData.billNumber} | ${new Date().toISOString()} | Cashier: ${billData.cashier}
+      </div>
+      <script>
+        window.onload = () => { setTimeout(() => window.print(), 300); };
+      <\/script>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+};
 
-  const openCreditReceiptPrint = (billData, cartItems, customer) => {
-    const printWindow = window.open('', '_blank', 'width=400,height=700');
-    const safeOutstanding = customer?.outstanding_balance || 0;
-    
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Credit Bill - ${billData.billNumber}</title>
-        <style>
-          @page { size: 80mm auto; margin: 0; }
-          body { font-family: 'Courier New', monospace; font-size: 10px; padding: 8px; margin: 0; background: #fff; color: #000; }
-          .header { text-align: center; margin-bottom: 8px; border-bottom: 2px dashed #000; padding-bottom: 8px; }
-          .header h2 { margin: 0; font-size: 16px; font-weight: bold; }
-          .header p { margin: 2px 0; font-size: 9px; }
-          .customer-info { margin-bottom: 8px; font-size: 9px; border-bottom: 1px solid #ccc; padding-bottom: 6px; }
-          .customer-info div { margin: 2px 0; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-          th { text-align: left; border-bottom: 1px solid #000; padding: 3px 0; font-size: 9px; font-weight: bold; }
-          td { padding: 3px 0; font-size: 9px; }
-          .totals { border-top: 2px dashed #000; padding-top: 6px; margin-top: 6px; }
-          .totals div { display: flex; justify-content: space-between; margin: 3px 0; font-size: 10px; }
-          .grand-total { font-weight: bold; font-size: 13px; border-top: 1px solid #000; padding-top: 4px; margin-top: 4px; }
-          .outstanding { background: #7c3aed; color: #fff; padding: 6px; margin-top: 6px; text-align: center; font-weight: bold; font-size: 12px; }
-          .footer { text-align: center; margin-top: 12px; font-size: 8px; border-top: 1px dashed #000; padding-top: 6px; }
-          .credit-badge { background: #7c3aed; color: #fff; padding: 2px 8px; font-weight: bold; font-size: 9px; border-radius: 3px; }
-          @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h2>SAMAGI HARDWARE</h2>
-          <p>POS System - <span class="credit-badge">CREDIT BILL</span></p>
-          <p>${new Date().toLocaleString('en-LK')}</p>
+const openCreditReceiptPrint = (billData, cartItems, customer) => {
+  const printWindow = window.open('', '_blank', 'width=400,height=800');
+  const safeOutstanding = customer?.outstanding_balance || 0;
+  
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Credit Bill - ${billData.billNumber}</title>
+      <style>
+        @page { size: 80mm auto; margin: 0; }
+        body { 
+          font-family: 'Courier New', monospace; 
+          font-size: 10px; 
+          padding: 8px; 
+          margin: 0; 
+          background: #fff; 
+          color: #000;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        .header { 
+          text-align: center; 
+          margin-bottom: 8px; 
+          border-bottom: 2px dashed #000; 
+          padding-bottom: 8px; 
+        }
+        .header h2 { 
+          margin: 0; 
+          font-size: 18px; 
+          font-weight: bold; 
+          text-transform: uppercase;
+        }
+        .header .company-info {
+          font-size: 10px;
+          margin: 4px 0;
+          line-height: 1.4;
+        }
+        .header .bill-type {
+          font-size: 12px;
+          font-weight: bold;
+          margin-top: 4px;
+        }
+        .date-time {
+          text-align: right;
+          font-size: 10px;
+          margin-top: 4px;
+        }
+        .customer-info { 
+          margin-bottom: 8px; 
+          font-size: 9px; 
+          border-bottom: 1px solid #ccc; 
+          padding-bottom: 6px; 
+        }
+        .customer-info div { 
+          margin: 2px 0; 
+        }
+        table { 
+          width: 100%; 
+          border-collapse: collapse; 
+          margin-bottom: 8px; 
+        }
+        th { 
+          text-align: left; 
+          border-bottom: 2px solid #000; 
+          padding: 4px 0; 
+          font-size: 9px; 
+          font-weight: bold; 
+        }
+        td { 
+          padding: 4px 0; 
+          font-size: 9px; 
+        }
+        .totals { 
+          border-top: 2px dashed #000; 
+          padding-top: 6px; 
+          margin-top: 6px; 
+        }
+        .totals div { 
+          display: flex; 
+          justify-content: space-between; 
+          margin: 3px 0; 
+          font-size: 10px; 
+        }
+        .grand-total { 
+          font-weight: bold; 
+          font-size: 13px; 
+          border-top: 2px solid #000; 
+          padding-top: 4px; 
+          margin-top: 4px; 
+        }
+        .outstanding { 
+          background: #7c3aed; 
+          color: #fff; 
+          padding: 6px; 
+          margin-top: 6px; 
+          text-align: center; 
+          font-weight: bold; 
+          font-size: 12px;
+          border: 1px solid #000;
+        }
+        .footer { 
+          text-align: center; 
+          margin-top: 12px; 
+          font-size: 8px; 
+          border-top: 2px dashed #000; 
+          padding-top: 6px; 
+        }
+        .credit-badge { 
+          background: #7c3aed; 
+          color: #fff; 
+          padding: 2px 8px; 
+          font-weight: bold; 
+          font-size: 9px; 
+          border-radius: 3px;
+          border: 1px solid #000;
+        }
+        @media print { 
+          body { 
+            -webkit-print-color-adjust: exact; 
+            print-color-adjust: exact;
+            print-adjust: exact;
+          }
+          @page { margin: 0; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h2>SAMAGI MOTORS</h2>
+        <div class="company-info">
+          <div>TP: 077 779 7410</div>
+          <div>Madagalle Road, Kubukgate</div>
+          <div>(Kurunegala)</div>
         </div>
-        <div class="customer-info">
-          <div><strong>Bill #:</strong> ${billData.billNumber}</div>
-          <div><strong>Customer:</strong> ${customer?.name || 'N/A'}${customer?.company_name ? ` (${customer.company_name})` : ''}</div>
-          <div><strong>Mobile:</strong> ${customer?.mobile || 'N/A'}</div>
-          <div><strong>Address:</strong> ${customer?.address || 'N/A'}${customer?.city ? `, ${customer.city}` : ''}</div>
-          <div><strong>Due Date:</strong> ${billData.due_date ? new Date(billData.due_date).toLocaleDateString('en-LK') : 'N/A'}</div>
-          ${safeOutstanding > 0 ? `<div><strong>Previous Outstanding:</strong> LKR ${safeOutstanding.toFixed(2)}</div>` : ''}
-        </div>
-        <table>
-          <thead>
+        <div class="bill-type">POS SYSTEM - <span class="credit-badge">CREDIT BILL</span></div>
+        <div class="date-time">${new Date().toLocaleString('en-LK')}</div>
+      </div>
+      <div class="customer-info">
+        <div><strong>Bill #:</strong> ${billData.billNumber}</div>
+        <div><strong>Customer:</strong> ${customer?.name || 'N/A'}${customer?.company_name ? ` (${customer.company_name})` : ''}</div>
+        <div><strong>Mobile:</strong> ${customer?.mobile || 'N/A'}</div>
+        <div><strong>Address:</strong> ${customer?.address || 'N/A'}${customer?.city ? `, ${customer.city}` : ''}</div>
+        <div><strong>Due Date:</strong> ${billData.due_date ? new Date(billData.due_date).toLocaleDateString('en-LK') : 'N/A'}</div>
+        ${safeOutstanding > 0 ? `<div><strong>Previous Outstanding:</strong> LKR ${safeOutstanding.toFixed(2)}</div>` : ''}
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:40%">Item</th>
+            <th style="text-align:center">Qty</th>
+            <th style="text-align:right">Price</th>
+            <th style="text-align:right">Disc</th>
+            <th style="text-align:right">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${Array.isArray(cartItems) ? cartItems.map(item => `
             <tr>
-              <th style="width:40%">Item</th>
-              <th style="text-align:center">Qty</th>
-              <th style="text-align:right">Price</th>
-              <th style="text-align:right">Disc</th>
-              <th style="text-align:right">Total</th>
+              <td>${item.product_name || 'N/A'}<br><span style="font-size:8px;color:#333">${item.barcode || ''}</span></td>
+              <td style="text-align:center">${item.quantity || 1}</td>
+              <td style="text-align:right">${(item.unit_price || 0).toFixed(2)}</td>
+              <td style="text-align:right;color:#c00">${(item.discount_lkr || 0) > 0 ? '-' + ((item.discount_lkr * item.quantity) || 0).toFixed(2) : '-'}</td>
+              <td style="text-align:right;font-weight:bold">${(((item.unit_price || 0) * (item.quantity || 1)) - ((item.discount_lkr || 0) * (item.quantity || 1))).toFixed(2)}</td>
             </tr>
-          </thead>
-          <tbody>
-            ${Array.isArray(cartItems) ? cartItems.map(item => `
-              <tr>
-                <td>${item.product_name || 'N/A'}<br><span style="font-size:8px;color:#666">${item.barcode || ''}</span></td>
-                <td style="text-align:center">${item.quantity || 1}</td>
-                <td style="text-align:right">${(item.unit_price || 0).toFixed(2)}</td>
-                <td style="text-align:right;color:red">${(item.discount_lkr || 0) > 0 ? '-' + ((item.discount_lkr * item.quantity) || 0).toFixed(2) : '-'}</td>
-                <td style="text-align:right;font-weight:bold">${(((item.unit_price || 0) * (item.quantity || 1)) - ((item.discount_lkr || 0) * (item.quantity || 1))).toFixed(2)}</td>
-              </tr>
-            `).join('') : ''}
-          </tbody>
-        </table>
-        <div class="totals">
-          <div><span>Subtotal:</span><span>LKR ${totalAmount.toFixed(2)}</span></div>
-          <div style="color:red"><span>Discount:</span><span>- LKR ${totalDiscount.toFixed(2)}</span></div>
-          <div class="grand-total"><span>TOTAL:</span><span>LKR ${grandTotal.toFixed(2)}</span></div>
-        </div>
-        <div class="outstanding">
-          NEW OUTSTANDING: LKR ${(safeOutstanding + grandTotal).toFixed(2)}
-        </div>
-        <div class="footer">
-          <p>Thank you for your business!</p>
-          <p>Please settle the bill by the due date</p>
-          <p>Cashier: ${billData.cashier || 'N/A'}</p>
-        </div>
-        <script>
-          window.onload = () => { setTimeout(() => window.print(), 300); };
-        <\/script>
-      </body>
-      </html>
-    `);
-    printWindow.document.close();
-  };
+          `).join('') : ''}
+        </tbody>
+      </table>
+      <div class="totals">
+        <div><span>Subtotal:</span><span>LKR ${totalAmount.toFixed(2)}</span></div>
+        <div style="color:#c00"><span>Discount:</span><span>- LKR ${totalDiscount.toFixed(2)}</span></div>
+        <div class="grand-total"><span>TOTAL:</span><span>LKR ${grandTotal.toFixed(2)}</span></div>
+      </div>
+      <div class="outstanding">
+        NEW OUTSTANDING: LKR ${(safeOutstanding + grandTotal).toFixed(2)}
+      </div>
+      <div class="footer">
+        <p>Thank you for your business!</p>
+        <p>Please settle the bill by the due date</p>
+        <p>Cashier: ${billData.cashier || 'N/A'}</p>
+        <p>TP: 077 779 7410 | Madagalle Road, Kubukgate, Kurunegala</p>
+      </div>
+      <script>
+        window.onload = () => { setTimeout(() => window.print(), 300); };
+      <\/script>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+};
 
   const handleCheckout = async () => {
     if (!Array.isArray(cart) || cart.length === 0) {

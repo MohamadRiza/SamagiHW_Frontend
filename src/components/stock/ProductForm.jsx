@@ -279,6 +279,8 @@ const ProductForm = ({ product, onSubmit, onCancel, loading }) => {
         </div>
       )}
 
+      
+
       {/* Actions */}
       <div className="flex gap-3 pt-4 border-t">
         <button
