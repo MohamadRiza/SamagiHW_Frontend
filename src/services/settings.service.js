@@ -56,6 +56,15 @@ class SettingsService {
     const response = await api.get('/settings/system-info');
     return response.data;
   }
+
+  // Create desktop backup
+  async createDesktopBackup() {
+    if (window.electronAPI && window.electronAPI.createDesktopBackup) {
+      return await window.electronAPI.createDesktopBackup();
+    }
+    const response = await api.post('/settings/desktop-backup');
+    return response.data;
+  }
 }
 
 export default new SettingsService();

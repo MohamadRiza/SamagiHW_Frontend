@@ -271,7 +271,7 @@ const CreditBilling = () => {
       else setCustomers([]);
     } catch (error) { console.error('Fetch customers error:', error); setCustomers([]); }
   };
-
+  
   // 🔍 Customer search with exact match priority
   useEffect(() => {
     if (searchCustomer.length < 1 || customerType !== 'existing') { setShowCustomerDropdown(false); setFilteredCustomers([]); return; }

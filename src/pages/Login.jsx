@@ -88,7 +88,7 @@ const Login = () => {
             <div className="max-w-lg text-center">
               <div className="mb-8 flex justify-center">
                 <img 
-                  src="/Logo.jpg" 
+                  src="Logo.jpg" 
                   alt="Samagi Motors" 
                   className="h-32 w-auto object-contain drop-shadow-2xl rounded-lg"
                 />
@@ -116,7 +116,7 @@ const Login = () => {
           {/* Mobile Logo - Only visible on small screens */}
           <div className="lg:hidden flex justify-center mb-8">
             <img 
-              src="/samagi_Logo.png" 
+              src="Logo.jpg" 
               alt="Samagi Motors" 
               className="h-20 w-auto object-contain"
             />
@@ -284,7 +284,7 @@ const Login = () => {
               </div>
               <div className="flex items-center gap-2">
                 <img 
-                  src="/nexasoft_logo.png" 
+                  src="nexasoft_logo.png" 
                   alt="Nexasoft" 
                   className="h-8 w-auto object-contain opacity-75 hover:opacity-100 transition-opacity cursor-pointer"
                   onClick={() => window.open('https://nexasoft.site', '_blank', 'noopener,noreferrer')}

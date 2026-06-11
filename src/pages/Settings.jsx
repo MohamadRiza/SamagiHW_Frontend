@@ -31,6 +31,10 @@ const Settings = () => {
   const [systemInfo, setSystemInfo] = useState(null);
   const [showSystemInfo, setShowSystemInfo] = useState(false);
 
+  // Backup state
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [backupPath, setBackupPath] = useState(null);
+
   // Fetch data on mount
   useEffect(() => {
     fetchAppInfo();
@@ -314,6 +318,28 @@ const Settings = () => {
       return new Date(dateString).toLocaleDateString();
     } catch {
       return dateString;
+    }
+  };
+
+  const handleCreateBackup = async () => {
+    try {
+      setBackupLoading(true);
+      setBackupPath(null);
+      toast.loading('Creating Desktop backup...', { id: 'desktop-backup' });
+      
+      const result = await SettingsService.createDesktopBackup();
+      
+      if (result?.success) {
+        setBackupPath(result.path);
+        toast.success('🎉 Backup saved to Desktop successfully!', { id: 'desktop-backup', duration: 6000 });
+      } else {
+        toast.error(result?.error || 'Failed to create backup', { id: 'desktop-backup' });
+      }
+    } catch (error) {
+      console.error('Desktop backup error:', error);
+      toast.error('❌ Failed to create Desktop backup', { id: 'desktop-backup' });
+    } finally {
+      setBackupLoading(false);
     }
   };
 
@@ -611,6 +637,55 @@ const Settings = () => {
                   )}
                 </button>
               </form>
+            </div>
+
+            {/* 💾 Database Backup Section */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white text-xl">💾</div>
+                <div>
+                  <h2 className="font-bold text-gray-900">Database Backup</h2>
+                  <p className="text-xs text-gray-500">Back up database and important files to your Desktop</p>
+                </div>
+              </div>
+              
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  Click the button below to create a full backup of your POS system data. A folder named <code className="font-mono font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">database_posSystem</code> will be created automatically on your Desktop containing:
+                </p>
+                <ul className="text-xs text-gray-500 mt-2 list-disc list-inside space-y-1">
+                  <li>Active SQLite database file (<code className="font-mono">pos_database.sqlite</code>)</li>
+                  <li>Uploaded invoice and purchase images (<code className="font-mono">uploads/</code>)</li>
+                  <li>Automated database backup history (<code className="font-mono">backups/</code>)</li>
+                </ul>
+              </div>
+
+              {backupPath && (
+                <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                  <p className="text-xs font-bold text-emerald-800">✅ Backup Created Successfully!</p>
+                  <p className="text-xs text-emerald-700 mt-1 truncate" title={backupPath}>
+                    Location: {backupPath}
+                  </p>
+                </div>
+              )}
+
+              <button
+                onClick={handleCreateBackup}
+                disabled={backupLoading}
+                className="w-full py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {backupLoading ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                    </svg>
+                    Creating Backup...
+                  </>
+                ) : (
+                  '💾 Create Desktop Backup'
+                )}
+              </button>
             </div>
             
           </div>

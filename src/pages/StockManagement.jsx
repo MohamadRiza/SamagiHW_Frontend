@@ -5,17 +5,18 @@ import ProductService from '../services/product.service';
 import ProductForm from '../components/stock/ProductForm';
 import ProductTable from '../components/stock/ProductTable';
 import { Toaster, toast } from 'react-hot-toast';
+import JsBarcode from 'jsbarcode';
 
 const StockManagement = () => {
   const { isAdmin } = useAuth();
-  const [products, setProducts]           = useState([]);
-  const [loading, setLoading]             = useState(true);
-  const [formLoading, setFormLoading]     = useState(false);
-  const [showForm, setShowForm]           = useState(false);
+  const [products, setProducts]             = useState([]);
+  const [loading, setLoading]               = useState(true);
+  const [formLoading, setFormLoading]       = useState(false);
+  const [showForm, setShowForm]             = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const modalRef = useRef(null);
 
-  // ── Fetch ─────────────────────────────────────────────────────────────
+  // ── Fetch ──────────────────────────────────────────────────────────────
   const fetchProducts = async () => {
     try {
       setLoading(true);
@@ -29,9 +30,7 @@ const StockManagement = () => {
     }
   };
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
+  useEffect(() => { fetchProducts(); }, []);
 
   // ── Open / close modal ─────────────────────────────────────────────────
   const openAddForm = useCallback(() => {
@@ -44,23 +43,20 @@ const StockManagement = () => {
     setEditingProduct(null);
   }, []);
 
-  // ── Ctrl+Alt+N shortcut ───────────────────────────────────────────────
+  // ── Ctrl+Alt+N shortcut ────────────────────────────────────────────────
   useEffect(() => {
     const handler = (e) => {
       if (e.ctrlKey && e.altKey && e.key.toLowerCase() === 'n') {
         e.preventDefault();
         if (isAdmin()) openAddForm();
       }
-      // Escape closes modal
-      if (e.key === 'Escape' && showForm) {
-        closeForm();
-      }
+      if (e.key === 'Escape' && showForm) closeForm();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [isAdmin, openAddForm, closeForm, showForm]);
 
-  // ── CRUD ──────────────────────────────────────────────────────────────
+  // ── CRUD ───────────────────────────────────────────────────────────────
   const handleSubmit = async (productData) => {
     try {
       setFormLoading(true);
@@ -98,119 +94,253 @@ const StockManagement = () => {
     }
   };
 
-  // ── Barcode Print ─────────────────────────────────────────────────────
+  // ── Barcode Print ──────────────────────────────────────────────────────
+  // Shows REAL selling_price on label (not discounted), uses sub_brands,
+  // company left-aligned and #ID right-aligned in the header row.
   const handlePrintBarcode = (product) => {
-    const finalPrice = product.discount_type === 'percent'
-      ? product.selling_price - (product.selling_price * product.discount_value / 100)
-      : product.selling_price - product.discount_value;
+    // ✅ Use REAL selling_price on the label — NOT the discounted price
+    const realPrice = product.selling_price || 0;
 
-    const barcodeImage = generateBarcodeCanvas(product.barcode);
+    // Generate real Code128 barcode image
+    const generateRealBarcode = (code) => {
+      const canvas = document.createElement('canvas');
+      try {
+        JsBarcode(canvas, code, {
+          format: 'CODE128',
+          width: 2,
+          height: 40,
+          displayValue: false,
+          fontSize: 0,
+          margin: 0,
+          background: '#ffffff',
+          lineColor: '#000000',
+        });
+      } catch (error) {
+        console.error('Barcode generation error:', error);
+        const ctx = canvas.getContext('2d');
+        canvas.width = 300;
+        canvas.height = 40;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#000000';
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(code, canvas.width / 2, canvas.height / 2);
+      }
+      return canvas.toDataURL('image/png');
+    };
+
+    const barcodeImage = generateRealBarcode(product.barcode);
 
     const formattedPrice = new Intl.NumberFormat('en-LK', {
       minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(finalPrice);
+      maximumFractionDigits: 2,
+    }).format(realPrice);
 
-    const displayShortForm = product.short_form || product.item_name?.substring(0, 10) || '';
+    // sub_brands: comma-separated compatible brands, up to 4, max 20 chars each
+    const brandLines = (product.sub_brands || '')
+      .split(',')
+      .map((s) => s.trim().slice(0, 20))
+      .filter(Boolean)
+      .slice(0, 4);
 
-    const printWindow = window.open('', '_blank', 'width=400,height=300');
+    const brandsHTML = brandLines
+      .map((line) => `<div class="brand-line">${line}</div>`)
+      .join('');
+
+    const displayName = product.item_name || '';
+    const idLabel = product.id ? `#${product.id}` : '';
+
+    const printWindow = window.open('', '_blank', 'width=300,height=200');
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
       <head>
         <title>Barcode - ${product.barcode}</title>
         <style>
-          @page { size: 3.5in 2in; margin: 0; }
-          * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            width: 3.5in; height: 2in;
-            padding: 0.1in 0.15in;
-            background: #fff; color: #000;
+          @page {
+            size: 50mm 30mm;
+            margin: 0;
           }
-          .label-container {
-            border: 1px solid #ddd; padding: 10px 8px; height: 100%;
-            display: flex; flex-direction: column; align-items: center;
+          * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          html, body {
+            width: 50mm;
+            height: 30mm;
+            overflow: hidden;
+            background: #fff;
+            color: #000;
+            font-family: 'Arial', 'Helvetica Neue', Helvetica, sans-serif;
+          }
+          .label {
+            width: 50mm;
+            height: 30mm;
+            padding: 1.2mm 1.5mm 1mm 1.5mm;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+          }
+
+          /* ── Row 1: Company (left) + #ID (right) ── */
+          .header-row {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 0.8mm;
+            border-bottom: 0.25mm solid #000;
+            flex-shrink: 0;
+            line-height: 1;
           }
           .company-name {
-            text-align: center; font-weight: 700; font-size: 12px;
-            letter-spacing: 1px; text-transform: uppercase;
-            margin-bottom: 6px; padding-bottom: 4px;
-            border-bottom: 1px dashed #999; width: 100%;
+            font-size: 5.5pt;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+            text-transform: uppercase;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
           }
-          .barcode-wrapper {
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            margin: 4px 0; width: 100%;
+          .primary-id {
+            font-size: 5.5pt;
+            font-weight: 700;
+            white-space: nowrap;
+            flex-shrink: 0;
+            margin-left: 2mm;
           }
-          .barcode-image { width: 160px; height: 45px; object-fit: contain; image-rendering: pixelated; margin-bottom: 2px; }
-          .barcode-number {
+
+          /* ── Row 2: Item name ── */
+          .item-name-row {
+            text-align: center;
+            font-size: 8pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            line-height: 1.1;
+            padding: 0.6mm 0 0.4mm 0;
+            flex-shrink: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+
+          /* ── Row 3: Barcode ── */
+          .barcode-row {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex-shrink: 0;
+          }
+          .barcode-img {
+            width: 100%;
+            height: 10mm;
+            object-fit: fill;
+            image-rendering: pixelated;
+            display: block;
+          }
+          .barcode-num {
             font-family: 'Courier New', Courier, monospace;
-            font-weight: 700; font-size: 11px; letter-spacing: 3px;
-            text-align: center; margin-top: 2px;
+            font-size: 5.5pt;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-align: center;
+            margin-top: 0.3mm;
+            line-height: 1;
           }
-          .info-row {
-            display: flex; justify-content: space-between; align-items: center;
-            width: 100%; margin-top: 6px; padding-top: 6px; border-top: 1px solid #ddd;
+
+          /* ── Row 4: Brands (left) + Price (right) ── */
+          .bottom-row {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: flex-end;
+            flex: 1;
+            padding-top: 0.8mm;
+            min-height: 0;
+            overflow: hidden;
           }
-          .short-form { font-size: 10px; font-weight: 700; color: #333; text-transform: uppercase; letter-spacing: 0.5px; }
-          .price { font-size: 11px; font-weight: 700; color: #000; text-align: right; }
-          .price .currency { font-size: 9px; vertical-align: super; margin-right: 1px; }
-          @media print {
-            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 0.1in 0.15in !important; }
-            .label-container { border: 1px solid #000; }
+          .brands-col {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: flex-start;
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+          }
+          .brand-line {
+            font-size: 5pt;
+            font-weight: 500;
+            color: #000;
+            line-height: 1.25;
+            white-space: nowrap;
+          }
+          .price-block {
+            flex-shrink: 0;
+            text-align: right;
+            line-height: 1;
+          }
+          .price-label {
+            font-size: 5.5pt;
+            font-weight: 700;
+            color: #000;
+            white-space: nowrap;
+          }
+          .price-amount {
+            font-size: 10pt;
+            font-weight: 800;
+            color: #000;
+            white-space: nowrap;
+            display: block;
           }
         </style>
       </head>
       <body>
-        <div class="label-container">
-          <div class="company-name">Samagi Hardware</div>
-          <div class="barcode-wrapper">
-            <img src="${barcodeImage}" alt="barcode" class="barcode-image" />
-            <div class="barcode-number">${product.barcode}</div>
+        <div class="label">
+
+          <!-- Row 1: Company (left) + #ID (right) -->
+          <div class="header-row">
+            <div class="company-name">SAMAGI MOTORS &ndash; KUMBUKGATE</div>
+            <div class="primary-id">${idLabel}</div>
           </div>
-          <div class="info-row">
-            <div class="short-form">${displayShortForm}</div>
-            <div class="price"><span class="currency">LKR</span>${formattedPrice}</div>
+
+          <!-- Row 2: Item Name -->
+          <div class="item-name-row">${displayName}</div>
+
+          <!-- Row 3: Barcode -->
+          <div class="barcode-row">
+            <img src="${barcodeImage}" class="barcode-img" alt="barcode" />
+            <div class="barcode-num">${product.barcode}</div>
           </div>
+
+          <!-- Row 4: Brands + Price -->
+          <div class="bottom-row">
+            <div class="brands-col">
+              ${brandsHTML}
+            </div>
+            <div class="price-block">
+              <span class="price-label">LKR</span>
+              <span class="price-amount">${formattedPrice}</span>
+            </div>
+          </div>
+
         </div>
-        <script>window.onload = function() { setTimeout(() => window.print(), 300); };<\/script>
+
+        <script>
+          window.onload = function () {
+            setTimeout(() => { window.print(); }, 300);
+          };
+        <\/script>
       </body>
       </html>
     `);
     printWindow.document.close();
-  };
-
-  const generateBarcodeCanvas = (code, width = 180, height = 45) => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = width;
-    canvas.height = height;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, width, height);
-
-    let hash = 0;
-    for (let i = 0; i < code.length; i++) {
-      hash = code.charCodeAt(i) + ((hash << 5) - hash);
-    }
-
-    let totalWidth = 0;
-    const bars = [];
-    for (let i = 0; i < 30; i++) {
-      const barWidth = ((hash >> i) & 3) + 1;
-      const spacing = ((hash >> (i + 5)) & 1) ? 2 : 1;
-      bars.push({ width: barWidth, spacing });
-      totalWidth += barWidth + spacing;
-    }
-
-    let x = (width - totalWidth) / 2;
-    ctx.fillStyle = '#000000';
-    for (const bar of bars) {
-      ctx.fillRect(x, 3, bar.width, height - 8);
-      x += bar.width + bar.spacing;
-    }
-
-    return canvas.toDataURL('image/png');
   };
 
   const canEdit = isAdmin();
@@ -228,7 +358,6 @@ const StockManagement = () => {
               <h1 className="text-2xl font-bold text-gray-900">Stock Management</h1>
               <p className="text-gray-500 text-sm">Manage products, inventory, and pricing</p>
             </div>
-
             {canEdit && (
               <button
                 onClick={openAddForm}
@@ -237,7 +366,9 @@ const StockManagement = () => {
               >
                 <span>➕</span>
                 Add New Product
-                <kbd className="ml-1 text-xs opacity-60 bg-white/20 px-1.5 py-0.5 rounded">Ctrl+Alt+N</kbd>
+                <kbd className="ml-1 text-xs opacity-60 bg-white/20 px-1.5 py-0.5 rounded">
+                  Ctrl+Alt+N
+                </kbd>
               </button>
             )}
           </div>
@@ -261,12 +392,12 @@ const StockManagement = () => {
           />
 
           {/* Low Stock Alert */}
-          {products.some(p => p.stock_quantity <= 10 && p.stock_quantity > 0) && (
+          {products.some((p) => p.stock_quantity <= 10 && p.stock_quantity > 0) && (
             <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
               <p className="text-sm text-amber-800">
                 ⚠️ <strong>Low Stock Alert:</strong>{' '}
-                {products.filter(p => p.stock_quantity <= 10 && p.stock_quantity > 0).length} items are running low.
-                Consider restocking soon.
+                {products.filter((p) => p.stock_quantity <= 10 && p.stock_quantity > 0).length} items
+                are running low. Consider restocking soon.
               </p>
             </div>
           )}
@@ -293,7 +424,9 @@ const StockManagement = () => {
                   {editingProduct ? '✏️ Edit Product' : '➕ Add New Product'}
                 </h2>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  {editingProduct ? `Editing: ${editingProduct.item_name}` : 'Fill in the details below'}
+                  {editingProduct
+                    ? `Editing: ${editingProduct.item_name}`
+                    : 'Fill in the details below'}
                 </p>
               </div>
               <button
@@ -303,7 +436,8 @@ const StockManagement = () => {
                 tabIndex={0}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>

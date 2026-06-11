@@ -1,11 +1,31 @@
 import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 
+/**
+ * ProductForm
+ *
+ * Changes vs original:
+ *  - Removed "Short Form" field
+ *  - Added up to 4 "Compatible Brand" fields (sub_brands), each max 20 chars
+ *  - sub_brands are saved as a comma-separated string in the `sub_brands` column
+ *  - Barcode still auto-generated, shown read-only
+ *  - All other fields and keyboard navigation unchanged
+ */
 const ProductForm = ({ product, onSubmit, onCancel, loading }) => {
+  // Parse existing sub_brands string into an array of up to 4 items
+  const parseBrands = (raw) => {
+    if (!raw) return ['', '', '', ''];
+    const parts = raw.split(',').map((s) => s.trim()).slice(0, 4);
+    while (parts.length < 4) parts.push('');
+    return parts;
+  };
+
+  const [brands, setBrands] = useState(() => parseBrands(product?.sub_brands));
+  const [previewPrice, setPreviewPrice] = useState(0);
+
   const { register, handleSubmit, reset, formState: { errors }, watch, setValue } = useForm({
     defaultValues: product || {
       item_name: '',
-      short_form: '',
       buying_price: '',
       selling_price: '',
       stock_quantity: 0,
@@ -16,16 +36,18 @@ const ProductForm = ({ product, onSubmit, onCancel, loading }) => {
     }
   });
 
-  const [previewPrice, setPreviewPrice] = useState(0);
   const discountType = watch('discount_type');
   const discountValue = watch('discount_value');
   const sellingPrice = watch('selling_price');
   const isCreditItem = watch('is_credit_item');
 
-  // Refs for keyboard nav
+  // Refs for keyboard navigation
   const fieldRefs = {
     item_name: useRef(null),
-    short_form: useRef(null),
+    brand0: useRef(null),
+    brand1: useRef(null),
+    brand2: useRef(null),
+    brand3: useRef(null),
     buying_price: useRef(null),
     selling_price: useRef(null),
     stock_quantity: useRef(null),
@@ -36,9 +58,16 @@ const ProductForm = ({ product, onSubmit, onCancel, loading }) => {
   };
 
   const fieldOrder = [
-    'item_name', 'short_form', 'buying_price', 'selling_price',
+    'item_name',
+    'brand0', 'brand1', 'brand2', 'brand3',
+    'buying_price', 'selling_price',
     'stock_quantity', 'discount_type', 'discount_value', 'company', 'submit'
   ];
+
+  // Re-sync brands when editing a different product
+  useEffect(() => {
+    setBrands(parseBrands(product?.sub_brands));
+  }, [product?.sub_brands]);
 
   // Auto-focus first field on mount
   useEffect(() => {
@@ -61,6 +90,7 @@ const ProductForm = ({ product, onSubmit, onCancel, loading }) => {
     }
   }, [sellingPrice, discountValue, discountType]);
 
+  // Move focus forward on Enter
   const handleKeyDown = (e, currentField) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -87,9 +117,34 @@ const ProductForm = ({ product, onSubmit, onCancel, loading }) => {
     }
   };
 
+  const registerWithRef = (name, options = {}) => {
+    const { ref: hookRef, ...rest } = register(name, options);
+    return {
+      ...rest,
+      ref: (el) => {
+        hookRef(el);
+        if (fieldRefs[name]) fieldRefs[name].current = el;
+      }
+    };
+  };
+
+  // Handle brand field change
+  const handleBrandChange = (index, value) => {
+    const updated = [...brands];
+    // Enforce max 20 chars
+    updated[index] = value.slice(0, 20);
+    setBrands(updated);
+  };
+
   const onFormSubmit = (data) => {
+    // Build sub_brands string from non-empty brand fields
+    const subBrandsStr = brands.filter((b) => b.trim() !== '').join(',') || null;
+
     onSubmit({
       ...data,
+      sub_brands: subBrandsStr,
+      // short_form removed — keep null for backward compat
+      short_form: null,
       buying_price: parseFloat(data.buying_price),
       selling_price: parseFloat(data.selling_price),
       stock_quantity: parseInt(data.stock_quantity) || 0,
@@ -97,20 +152,10 @@ const ProductForm = ({ product, onSubmit, onCancel, loading }) => {
     });
   };
 
-  const registerWithRef = (name, options = {}) => {
-    const { ref: hookRef, ...rest } = register(name, options);
-    return {
-      ...rest,
-      ref: (el) => {
-        hookRef(el);
-        fieldRefs[name].current = el;
-      }
-    };
-  };
-
   return (
     <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4" noValidate>
-      {/* Item Name */}
+
+      {/* ── Item Name ── */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Item Name <span className="text-red-500">*</span>
@@ -118,40 +163,58 @@ const ProductForm = ({ product, onSubmit, onCancel, loading }) => {
         <input
           {...registerWithRef('item_name', { required: 'Item name is required' })}
           className="input-pos w-full"
-          placeholder="e.g., Cement Bag 50kg"
+          placeholder="e.g., Side Mirror"
           onKeyDown={(e) => handleKeyDown(e, 'item_name')}
           autoComplete="off"
         />
         {errors.item_name && <p className="mt-1 text-sm text-red-600">{errors.item_name.message}</p>}
       </div>
 
-      {/* Short Form & Barcode */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Short Form</label>
-          <input
-            {...registerWithRef('short_form')}
-            className="input-pos w-full"
-            placeholder="e.g., CEM50"
-            maxLength={20}
-            onKeyDown={(e) => handleKeyDown(e, 'short_form')}
-            autoComplete="off"
-          />
+      {/* ── Compatible Brands (sub_brands) — up to 4, max 20 chars each ── */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Compatible Brands
+          <span className="ml-2 text-xs text-gray-400 font-normal">(up to 4 · max 20 chars each)</span>
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          {brands.map((brand, i) => (
+            <div key={i} className="relative">
+              <input
+                ref={fieldRefs[`brand${i}`]}
+                type="text"
+                value={brand}
+                maxLength={20}
+                placeholder={`Brand ${i + 1} (e.g., ${['SUZUKI', 'TOYOTA', 'HONDA', 'MAZDA'][i]})`}
+                onChange={(e) => handleBrandChange(i, e.target.value)}
+                onKeyDown={(e) => handleKeyDown(e, `brand${i}`)}
+                className="input-pos w-full pr-10"
+                autoComplete="off"
+              />
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 pointer-events-none">
+                {brand.length}/20
+              </span>
+            </div>
+          ))}
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Barcode</label>
-          <input
-            type="text"
-            value={product?.barcode || 'Auto-generated'}
-            readOnly
-            tabIndex={-1}
-            className="input-pos bg-gray-50 cursor-not-allowed font-mono text-sm w-full"
-          />
-          <p className="mt-1 text-xs text-gray-500">Auto-generated on save</p>
-        </div>
+        <p className="mt-1 text-xs text-gray-500">
+          Customers can search by brand name (e.g., "DELL KEYBOARD") or item name alone
+        </p>
       </div>
 
-      {/* Prices */}
+      {/* ── Barcode (read-only) ── */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Barcode</label>
+        <input
+          type="text"
+          value={product?.barcode || 'Auto-generated on save'}
+          readOnly
+          tabIndex={-1}
+          className="input-pos bg-gray-50 cursor-not-allowed font-mono text-sm w-full"
+        />
+        <p className="mt-1 text-xs text-gray-500">Auto-generated on save</p>
+      </div>
+
+      {/* ── Prices ── */}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -191,7 +254,7 @@ const ProductForm = ({ product, onSubmit, onCancel, loading }) => {
         </div>
       </div>
 
-      {/* Stock & Discount */}
+      {/* ── Stock & Discount ── */}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Stock Quantity</label>
@@ -228,11 +291,11 @@ const ProductForm = ({ product, onSubmit, onCancel, loading }) => {
         </div>
       </div>
 
-      {/* Discount Preview */}
+      {/* ── Discount Preview ── */}
       {sellingPrice > 0 && (
         <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
           <p className="text-sm text-blue-800">
-            <strong>Final Price:</strong>{' '}
+            <strong>Final Price (after discount):</strong>{' '}
             {discountValue > 0 ? (
               <>
                 LKR {parseFloat(sellingPrice).toFixed(2)}
@@ -242,10 +305,13 @@ const ProductForm = ({ product, onSubmit, onCancel, loading }) => {
             ) : null}
             <strong className="text-blue-700">LKR {previewPrice}</strong>
           </p>
+          <p className="text-xs text-blue-600 mt-1">
+            📌 Barcode label shows the <strong>real price (LKR {parseFloat(sellingPrice || 0).toFixed(2)})</strong>, not the discounted price
+          </p>
         </div>
       )}
 
-      {/* Company / Credit */}
+      {/* ── Company / Credit ── */}
       <div>
         <label className="flex items-center gap-2 mb-2 cursor-pointer select-none">
           <input
@@ -269,7 +335,7 @@ const ProductForm = ({ product, onSubmit, onCancel, loading }) => {
         </p>
       </div>
 
-      {/* Timestamps */}
+      {/* ── Timestamps (edit mode) ── */}
       {product?.created_at && (
         <div className="p-3 bg-gray-50 rounded-lg text-xs text-gray-600">
           <p>Created: {new Date(product.created_at).toLocaleString('en-LK')}</p>
@@ -279,9 +345,7 @@ const ProductForm = ({ product, onSubmit, onCancel, loading }) => {
         </div>
       )}
 
-      
-
-      {/* Actions */}
+      {/* ── Actions ── */}
       <div className="flex gap-3 pt-4 border-t">
         <button
           type="submit"
@@ -311,7 +375,10 @@ const ProductForm = ({ product, onSubmit, onCancel, loading }) => {
         </button>
       </div>
 
-      <p className="text-xs text-gray-400 text-center">Press <kbd className="px-1 py-0.5 bg-gray-100 rounded text-gray-600">Enter</kbd> to move between fields · <kbd className="px-1 py-0.5 bg-gray-100 rounded text-gray-600">Esc</kbd> to close</p>
+      <p className="text-xs text-gray-400 text-center">
+        Press <kbd className="px-1 py-0.5 bg-gray-100 rounded text-gray-600">Enter</kbd> to move between fields ·{' '}
+        <kbd className="px-1 py-0.5 bg-gray-100 rounded text-gray-600">Esc</kbd> to close
+      </p>
     </form>
   );
 };

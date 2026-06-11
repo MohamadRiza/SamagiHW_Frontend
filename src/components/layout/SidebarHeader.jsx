@@ -5,7 +5,7 @@ const SidebarHeader = ({ collapsed, onToggle, isDesktop, onCloseMobile }) => {
         {/* Logo */}
         <div className="flex-shrink-0">
           <img 
-            src="/Logo.jpg" 
+            src="Logo.jpg" 
             alt="SAMAGI" 
             className="w-10 h-10 object-contain rounded-lg"
             loading="lazy"

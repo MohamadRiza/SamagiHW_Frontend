@@ -2,34 +2,72 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import BarcodeGenerator from "./BarcodeGenerator";
 
 const ACTION_MENU_OPTIONS = [
-  { key: 'edit',      label: 'Edit Product',    icon: '✏️',  shortcut: 'E', color: 'text-blue-700  bg-blue-50  hover:bg-blue-100  border-blue-200'  },
-  { key: 'print',     label: 'Print Barcode',   icon: '🖨️', shortcut: 'P', color: 'text-purple-700 bg-purple-50 hover:bg-purple-100 border-purple-200' },
-  { key: 'delete',    label: 'Delete Product',  icon: '🗑️', shortcut: 'D', color: 'text-red-700    bg-red-50   hover:bg-red-100   border-red-200'   },
+  { key: 'edit',   label: 'Edit Product',   icon: '✏️',  shortcut: 'E', color: 'text-blue-700  bg-blue-50  hover:bg-blue-100  border-blue-200'  },
+  { key: 'print',  label: 'Print Barcode',  icon: '🖨️', shortcut: 'P', color: 'text-purple-700 bg-purple-50 hover:bg-purple-100 border-purple-200' },
+  { key: 'delete', label: 'Delete Product', icon: '🗑️', shortcut: 'D', color: 'text-red-700    bg-red-50   hover:bg-red-100   border-red-200'   },
 ];
 
 const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) => {
-  const [searchTerm, setSearchTerm]       = useState("");
-  const [filterCredit, setFilterCredit]   = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(-1);
-  const [actionProduct, setActionProduct] = useState(null);  // product for action menu
-  const [actionMenuIdx, setActionMenuIdx] = useState(0);     // highlighted action in menu
-  const [previewProduct, setPreviewProduct] = useState(null); // barcode preview
+  const [searchTerm, setSearchTerm]         = useState("");
+  const [filterCredit, setFilterCredit]     = useState(false);
+  const [selectedIndex, setSelectedIndex]   = useState(-1);
+  const [actionProduct, setActionProduct]   = useState(null);
+  const [actionMenuIdx, setActionMenuIdx]   = useState(0);
+  const [previewProduct, setPreviewProduct] = useState(null);
 
   const searchRef     = useRef(null);
   const tableRef      = useRef(null);
   const actionMenuRef = useRef(null);
 
-  // ── Filter ──────────────────────────────────────────────────────────────
+  // ── Smart Search ─────────────────────────────────────────────────────────
+  // Rules:
+  //   • If query starts with '#' → match only by primary key (exact, user must type '#')
+  //   • Otherwise → match item_name, barcode, or any sub_brand (case-insensitive)
+  //     Also handles combined "BRAND ITEM" or "ITEM BRAND" patterns
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
-      const q = searchTerm.toLowerCase();
-      const matchesSearch =
-        !searchTerm ||
-        p.item_name.toLowerCase().includes(q) ||
-        p.barcode.toLowerCase().includes(q) ||
-        p.short_form?.toLowerCase().includes(q);
+      // Credit filter
       const matchesCredit = !filterCredit || p.is_credit_item;
-      return matchesSearch && matchesCredit;
+      if (!matchesCredit) return false;
+
+      if (!searchTerm) return true;
+
+      const raw = searchTerm.trim();
+
+      // ── Primary key search: must start with '#' ──
+      if (raw.startsWith('#')) {
+        const idStr = raw.slice(1).trim();
+        if (idStr === '') return false; // '#' alone → no match
+        return String(p.id) === idStr;
+      }
+
+      // ── Normal search ──
+      const q = raw.toLowerCase();
+
+      // Match item_name
+      if (p.item_name?.toLowerCase().includes(q)) return true;
+
+      // Match barcode
+      if (p.barcode?.toLowerCase().includes(q)) return true;
+
+      // Match any of the sub_brands
+      if (p.sub_brands) {
+        const brands = p.sub_brands.split(',').map((b) => b.trim().toLowerCase());
+        // Direct brand match
+        if (brands.some((b) => b.includes(q))) return true;
+
+        // Combined search: "DELL KEYBOARD" or "KEYBOARD DELL"
+        // Split query into words and check if item_name matches one word and brand matches another
+        const words = q.split(/\s+/);
+        if (words.length >= 2) {
+          const nameMatches = (word) => p.item_name?.toLowerCase().includes(word);
+          const brandMatches = (word) => brands.some((b) => b.includes(word));
+          // At least one word matches name AND at least one word matches a brand
+          if (words.some(nameMatches) && words.some(brandMatches)) return true;
+        }
+      }
+
+      return false;
     });
   }, [products, searchTerm, filterCredit]);
 
@@ -54,7 +92,7 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
     }
   }, [actionProduct]);
 
-  // ── Helpers ─────────────────────────────────────────────────────────────
+  // ── Helpers ──────────────────────────────────────────────────────────────
   const getFinalPrice = (p) =>
     p.discount_type === "percent"
       ? p.selling_price - (p.selling_price * p.discount_value) / 100
@@ -67,11 +105,8 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
   };
 
   const dispatchAction = useCallback((key, product) => {
-    // Close menu and clear row selection immediately, THEN run the action
     setActionProduct(null);
     setSelectedIndex(-1);
-    // Use setTimeout so state flush happens before confirm dialogs or
-    // modal opens — prevents UI from feeling "stuck"
     setTimeout(() => {
       if (key === 'edit')   onEdit(product);
       if (key === 'print')  onPrintBarcode({ ...product, final_price: getFinalPrice(product) });
@@ -79,16 +114,14 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
     }, 0);
   }, [onEdit, onPrintBarcode, onDelete]);
 
-  // ── Global keyboard handler ──────────────────────────────────────────────
+  // ── Global keyboard handler ───────────────────────────────────────────────
   useEffect(() => {
     const handler = (e) => {
-      // If action menu is open, handle its navigation
-      if (actionProduct) return; // handled by menu's own keydown
+      if (actionProduct) return;
 
       const tag = document.activeElement?.tagName;
       const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
 
-      // Ctrl+F or / → focus search
       if ((e.ctrlKey && e.key === 'f') || (!isTyping && e.key === '/')) {
         e.preventDefault();
         searchRef.current?.focus();
@@ -96,7 +129,6 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
         return;
       }
 
-      // Arrow navigation only when not typing in search
       if (isTyping) return;
 
       if (e.key === 'ArrowDown') {
@@ -117,7 +149,7 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
     return () => window.removeEventListener('keydown', handler);
   }, [actionProduct, filteredProducts, selectedIndex]);
 
-  // ── Action menu keyboard ─────────────────────────────────────────────────
+  // ── Action menu keyboard ──────────────────────────────────────────────────
   const handleMenuKeyDown = (e) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -131,13 +163,12 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
     } else if (e.key === 'Escape') {
       setActionProduct(null);
     } else {
-      // Shortcut keys
       const opt = ACTION_MENU_OPTIONS.find(o => o.shortcut === e.key.toUpperCase());
       if (opt) dispatchAction(opt.key, actionProduct);
     }
   };
 
-  // ── Search field keyboard ────────────────────────────────────────────────
+  // ── Search field keyboard ─────────────────────────────────────────────────
   const handleSearchKeyDown = (e) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -157,7 +188,7 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
       <div className="p-4 border-b border-gray-100">
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
 
-          {/* Search — takes most of the width */}
+          {/* Search */}
           <div className="relative flex-1 min-w-0 w-full">
             <svg
               className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
@@ -169,7 +200,7 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
             <input
               ref={searchRef}
               type="text"
-              placeholder="Search by name, barcode or short form…  (Ctrl+F or /)"
+              placeholder="Search by name, brand, barcode…  or #ID for exact ID search  (Ctrl+F or /)"
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setSelectedIndex(-1); }}
               onKeyDown={handleSearchKeyDown}
@@ -186,7 +217,7 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
             )}
           </div>
 
-          {/* Filters + count — compact right side */}
+          {/* Filters + count */}
           <div className="flex items-center gap-4 shrink-0">
             <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none whitespace-nowrap">
               <input
@@ -207,7 +238,8 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
         <p className="mt-2 text-xs text-gray-400">
           <kbd className="px-1 py-0.5 bg-gray-100 rounded text-gray-500">↑↓</kbd> navigate ·{' '}
           <kbd className="px-1 py-0.5 bg-gray-100 rounded text-gray-500">Enter</kbd> actions ·{' '}
-          <kbd className="px-1 py-0.5 bg-gray-100 rounded text-gray-500">Esc</kbd> deselect
+          <kbd className="px-1 py-0.5 bg-gray-100 rounded text-gray-500">Esc</kbd> deselect ·{' '}
+          <kbd className="px-1 py-0.5 bg-gray-100 rounded text-gray-500">#5</kbd> search by ID
         </p>
       </div>
 
@@ -216,7 +248,7 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
         <table className="w-full">
           <thead className="bg-gray-50 sticky top-0 z-10">
             <tr>
-              {['ID','Barcode','Item','Prices (LKR)','Stock','Discount','Actions'].map((h) => (
+              {['ID', 'Barcode', 'Item', 'Compatible Brands', 'Prices (LKR)', 'Stock', 'Discount', 'Actions'].map((h) => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   {h}
                 </th>
@@ -226,7 +258,7 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
           <tbody className="divide-y divide-gray-100">
             {loading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center">
+                <td colSpan={8} className="px-4 py-12 text-center">
                   <div className="flex flex-col items-center gap-2 text-gray-400">
                     <svg className="animate-spin h-6 w-6" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
@@ -238,7 +270,7 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
               </tr>
             ) : filteredProducts.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-gray-400">
+                <td colSpan={8} className="px-4 py-12 text-center text-gray-400">
                   {searchTerm || filterCredit ? 'No matching products found' : 'No products added yet'}
                 </td>
               </tr>
@@ -248,22 +280,23 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
                 const finalPrice  = getFinalPrice(product);
                 const isSelected  = idx === selectedIndex;
 
+                // Parse sub_brands for display
+                const brandList = (product.sub_brands || '')
+                  .split(',')
+                  .map((b) => b.trim())
+                  .filter(Boolean);
+
                 return (
                   <tr
                     key={product.id}
                     data-row
                     tabIndex={0}
-                    onClick={() => {
-                      setSelectedIndex(idx);
-                    }}
-                    onDoubleClick={() => {
-                      setSelectedIndex(idx);
-                      setActionProduct(product);
-                    }}
+                    onClick={() => setSelectedIndex(idx)}
+                    onDoubleClick={() => { setSelectedIndex(idx); setActionProduct(product); }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') { setActionProduct(product); }
-                      if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIndex(Math.min(idx+1, filteredProducts.length-1)); }
-                      if (e.key === 'ArrowUp')   { e.preventDefault(); setSelectedIndex(Math.max(idx-1, 0)); }
+                      if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIndex(Math.min(idx + 1, filteredProducts.length - 1)); }
+                      if (e.key === 'ArrowUp')   { e.preventDefault(); setSelectedIndex(Math.max(idx - 1, 0)); }
                       if (e.key === 'Escape')     { setSelectedIndex(-1); }
                     }}
                     className={`transition-colors outline-none cursor-pointer
@@ -278,7 +311,7 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
                         {isSelected && (
                           <span className="w-1.5 h-6 rounded-full bg-primary-500 inline-block shrink-0" />
                         )}
-                        #{product.id}
+                        <span className="font-mono font-bold text-primary-700">#{product.id}</span>
                       </div>
                     </td>
 
@@ -302,13 +335,28 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
                     {/* Item */}
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-900">{product.item_name}</p>
-                      {product.short_form && (
-                        <p className="text-xs text-gray-500">{product.short_form}</p>
-                      )}
                       {product.company && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 mt-1">
                           {product.company}
                         </span>
+                      )}
+                    </td>
+
+                    {/* Compatible Brands */}
+                    <td className="px-4 py-3">
+                      {brandList.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {brandList.map((b, i) => (
+                            <span
+                              key={i}
+                              className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800"
+                            >
+                              {b}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-xs">—</span>
                       )}
                     </td>
 
@@ -385,6 +433,7 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
             <div className="mb-4 pb-3 border-b border-gray-100">
               <p className="text-xs text-gray-400 uppercase tracking-wider mb-0.5">Action for</p>
               <p className="font-semibold text-gray-900 text-lg leading-snug">{actionProduct.item_name}</p>
+              <p className="text-xs text-primary-600 font-bold">#{actionProduct.id}</p>
               <code className="text-xs text-gray-500 font-mono">{actionProduct.barcode}</code>
             </div>
 
@@ -434,10 +483,14 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
                 onClick={() => setPreviewProduct(null)}
                 className="text-gray-400 hover:text-gray-600"
               >✕</button>
-            </div> 
+            </div>
+            {/* Pass selling_price (real price), product_id, sub_brands */}
             <BarcodeGenerator
               barcode={previewProduct.barcode}
               item_name={previewProduct.item_name}
+              product_id={previewProduct.id}
+              selling_price={previewProduct.selling_price}
+              sub_brands={previewProduct.sub_brands}
             />
           </div>
         </div>
