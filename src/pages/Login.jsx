@@ -20,22 +20,40 @@ const Login = () => {
 
   const from = location.state?.from?.pathname || '/dashboard';
 
+  // Register fields with react-hook-form
+  const usernameRegister = register('username', { 
+    required: 'Username is required',
+    minLength: {
+      value: 3,
+      message: 'Username must be at least 3 characters'
+    }
+  });
+
+  const passwordRegister = register('password', { 
+    required: 'Password is required',
+    minLength: {
+      value: 6,
+      message: 'Password must be at least 6 characters'
+    }
+  });
+
   // Auto-focus username field on mount
   useEffect(() => {
-    if (usernameRef.current) {
-      usernameRef.current.focus();
-    }
+    const focusTimer = setTimeout(() => {
+      if (usernameRef.current) {
+        usernameRef.current.focus();
+      }
+    }, 100);
+    return () => clearTimeout(focusTimer);
   }, []);
 
-  // Handle keyboard navigation
-  const handleKeyDown = (e, nextRef) => {
+  // Handle Enter key on username input -> move focus to password input
+  const handleUsernameKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (nextRef && nextRef.current) {
-        nextRef.current.focus();
-        if (nextRef === loginButtonRef) {
-          nextRef.current.click();
-        }
+      if (passwordRef.current) {
+        passwordRef.current.focus();
+        passwordRef.current.select();
       }
     }
   };
@@ -158,15 +176,15 @@ const Login = () => {
                 </div>
                 <input
                   id="username"
-                  ref={usernameRef}
-                  {...register('username', { 
-                    required: 'Username is required',
-                    minLength: {
-                      value: 3,
-                      message: 'Username must be at least 3 characters'
-                    }
-                  })}
-                  onKeyDown={(e) => handleKeyDown(e, passwordRef)}
+                  autoFocus
+                  ref={(e) => {
+                    usernameRegister.ref(e);
+                    usernameRef.current = e;
+                  }}
+                  name={usernameRegister.name}
+                  onChange={usernameRegister.onChange}
+                  onBlur={usernameRegister.onBlur}
+                  onKeyDown={handleUsernameKeyDown}
                   className="input-field pl-10 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm py-3"
                   placeholder="Enter your username"
                   autoComplete="username"
@@ -197,16 +215,14 @@ const Login = () => {
                 </div>
                 <input
                   id="password"
-                  ref={passwordRef}
+                  ref={(e) => {
+                    passwordRegister.ref(e);
+                    passwordRef.current = e;
+                  }}
                   type={showPassword ? "text" : "password"}
-                  {...register('password', { 
-                    required: 'Password is required',
-                    minLength: {
-                      value: 6,
-                      message: 'Password must be at least 6 characters'
-                    }
-                  })}
-                  onKeyDown={(e) => handleKeyDown(e, loginButtonRef)}
+                  name={passwordRegister.name}
+                  onChange={passwordRegister.onChange}
+                  onBlur={passwordRegister.onBlur}
                   className="input-field pl-10 pr-10 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm py-3"
                   placeholder="Enter your password"
                   autoComplete="current-password"
