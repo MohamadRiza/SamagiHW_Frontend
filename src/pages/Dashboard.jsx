@@ -8,12 +8,35 @@ import ProductService from '../services/product.service';
 import ChequeService from '../services/cheque.service';
 import ExpenseService from '../services/expense.service';
 import { Toaster, toast } from 'react-hot-toast';
+import { 
+  FaBell, 
+  FaReceipt, 
+  FaCoins, 
+  FaExclamationTriangle, 
+  FaUser, 
+  FaBolt, 
+  FaKeyboard,
+  FaArrowRight 
+} from 'react-icons/fa';
+
+// ✅ Parse database date helper to handle UTC timezone correctly
+const parseDatabaseDate = (dateString) => {
+  if (!dateString) return null;
+  try {
+    const utcString = dateString.includes('T') ? dateString : dateString.replace(' ', 'T') + 'Z';
+    const parsed = new Date(utcString);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  } catch (e) {
+    return null;
+  }
+};
 
 // ✅ Format relative time helper
 const formatRelativeTime = (dateString) => {
   if (!dateString) return 'Unknown';
   try {
-    const date = new Date(dateString);
+    const date = parseDatabaseDate(dateString);
+    if (!date) return 'Unknown';
     const now = new Date();
     const diffMs = now - date;
     const diffMins = Math.floor(diffMs / 60000);
@@ -88,7 +111,7 @@ const ChequeRemindersWidget = ({ onChequeAlert }) => {
                 <div className={`px-4 py-3 rounded-xl shadow-lg border ${t.visible ? 'animate-enter' : 'animate-leave'} bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200 max-w-md`}>
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-                      <span className="text-xl">🔔</span>
+                      <FaBell className="text-xl text-amber-500" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-amber-900 text-sm">Cheque Due Soon</p>
@@ -96,7 +119,7 @@ const ChequeRemindersWidget = ({ onChequeAlert }) => {
                         #{cheque.cheque_number} from {cheque.company_name}
                       </p>
                       <p className="text-amber-700 text-xs mt-1">
-                        Due in 2 days • {cheque.type === 'incoming' ? '📥 Receive' : '📤 Pay'} LKR {cheque.amount?.toLocaleString()}
+                        Due in 2 days • {cheque.type === 'incoming' ? 'Incoming Receive' : 'Outgoing Pay'} LKR {cheque.amount?.toLocaleString()}
                       </p>
                     </div>
                   </div>
@@ -124,7 +147,7 @@ const ChequeRemindersWidget = ({ onChequeAlert }) => {
     <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-          <span className="text-lg">🧾</span> Cheque Reminders
+          <FaReceipt className="text-lg text-indigo-500" /> Cheque Reminders
         </h3>
         {urgentReminders.length > 0 && (
           <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-semibold rounded-full animate-pulse">
@@ -177,10 +200,10 @@ const ChequeRemindersWidget = ({ onChequeAlert }) => {
       
       <button
         onClick={() => window.location.href = '/cheques'}
-        className="mt-4 w-full text-xs text-indigo-600 hover:text-indigo-800 font-medium text-center py-2 rounded-lg hover:bg-indigo-50 transition-colors flex items-center justify-center gap-1 group"
+        className="mt-4 w-full text-xs text-indigo-600 hover:text-indigo-800 font-medium text-center py-2 rounded-lg hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2 group"
       >
         View All Cheques 
-        <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+        <FaArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
       </button>
     </div>
   );
@@ -274,20 +297,22 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchDashboardStats = async () => {
       try {
-        const today = new Date().toISOString().slice(0, 10);
+        const todayLocal = new Date().toLocaleDateString('en-CA');
         
         // ✅ Today's sales (cash bills)
         const cashResponse = await BillService.getRecent(100);
-        const todaysCashBills = (cashResponse.data || []).filter(bill => 
-          bill.created_at?.startsWith(today)
-        );
+        const todaysCashBills = (cashResponse.data || []).filter(bill => {
+          const billDate = bill.created_at ? parseDatabaseDate(bill.created_at)?.toLocaleDateString('en-CA') : '';
+          return billDate === todayLocal;
+        });
         const todaysSales = todaysCashBills.reduce((sum, bill) => sum + (bill.grand_total || 0), 0);
         
         // ✅ Total orders today (cash + credit)
         const creditResponse = await CreditBillService.getRecent(100);
-        const todaysCreditBills = (creditResponse.data || []).filter(bill => 
-          bill.created_at?.startsWith(today)
-        );
+        const todaysCreditBills = (creditResponse.data || []).filter(bill => {
+          const billDate = bill.created_at ? parseDatabaseDate(bill.created_at)?.toLocaleDateString('en-CA') : '';
+          return billDate === todayLocal;
+        });
         const orders = todaysCashBills.length + todaysCreditBills.length;
         
         // ✅ Low stock items
@@ -326,7 +351,7 @@ const Dashboard = () => {
         const cashResponse = await BillService.getRecent(5);
         const cashBills = cashResponse.data || [];
         cashBills.slice(0, 3).forEach(bill => {
-          const timestamp = bill.created_at ? new Date(bill.created_at).getTime() : 0;
+          const timestamp = bill.created_at ? parseDatabaseDate(bill.created_at)?.getTime() || 0 : 0;
           activities.push({
             id: `cash-${bill.id}`,
             timestamp,
@@ -341,7 +366,7 @@ const Dashboard = () => {
         const creditResponse = await CreditBillService.getRecent(5);
         const creditBills = creditResponse.data || [];
         creditBills.slice(0, 3).forEach(bill => {
-          const timestamp = bill.created_at ? new Date(bill.created_at).getTime() : 0;
+          const timestamp = bill.created_at ? parseDatabaseDate(bill.created_at)?.getTime() || 0 : 0;
           activities.push({
             id: `credit-${bill.id}`,
             timestamp,
@@ -357,12 +382,12 @@ const Dashboard = () => {
         const chequeReminders = chequeResponse.data || [];
         chequeReminders.slice(0, 2).forEach(cheque => {
           const days = cheque.days_until_due;
-          const timestamp = cheque.cheque_date ? new Date(cheque.cheque_date).getTime() : 0;
+          const timestamp = cheque.cheque_date ? parseDatabaseDate(cheque.cheque_date)?.getTime() || 0 : 0;
           activities.push({
             id: `cheque-${cheque.id}`,
             timestamp,
             time: days === 1 ? 'Due tomorrow' : `Due in ${days} days`,
-            text: `Cheque #${cheque.cheque_number} - ${cheque.type === 'incoming' ? '📥' : '📤'} LKR ${cheque.amount?.toLocaleString()}`,
+            text: `Cheque #${cheque.cheque_number} (${cheque.type === 'incoming' ? 'Incoming' : 'Outgoing'}) - LKR ${cheque.amount?.toLocaleString()}`,
             user: cheque.company_name,
             type: 'cheque',
             urgent: days <= 2
@@ -439,15 +464,15 @@ const Dashboard = () => {
     <div ref={dashboardRef} className="flex min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <Toaster position="top-right" toastOptions={{
         style: { borderRadius: '16px', padding: '12px 16px' },
-        success: { duration: 3000, icon: '✅' },
-        error: { duration: 4000, icon: '⚠️' }
+        success: { duration: 3000 },
+        error: { duration: 4000 }
       }} />
       
       {/* Keyboard Shortcut Hint Overlay */}
       {shortcutHint && (
         <div className="fixed inset-0 pointer-events-none flex items-center justify-center z-50">
-          <div className="bg-gray-900/90 text-white px-6 py-3 rounded-2xl shadow-2xl text-lg font-medium animate-bounce-shortcut">
-            ⌨️ {shortcutHint}
+          <div className="bg-gray-900/90 text-white px-6 py-3 rounded-2xl shadow-2xl text-lg font-medium animate-bounce-shortcut flex items-center gap-2">
+            <FaKeyboard className="text-gray-400" /> {shortcutHint}
           </div>
         </div>
       )}
@@ -500,7 +525,7 @@ const Dashboard = () => {
                 { 
                   label: "Today's Sales", 
                   value: stats.loading ? 'Loading...' : formatLKR(stats.todaysSales), 
-                  icon: '💰', 
+                  icon: <FaCoins className="text-2xl text-amber-600" />, 
                   color: 'amber',
                   gradient: 'from-amber-50 to-orange-50',
                   border: 'border-amber-200',
@@ -510,7 +535,7 @@ const Dashboard = () => {
                 { 
                   label: 'Orders Today', 
                   value: stats.loading ? '...' : stats.orders, 
-                  icon: '🧾', 
+                  icon: <FaReceipt className="text-2xl text-blue-600" />, 
                   color: 'blue',
                   gradient: 'from-blue-50 to-indigo-50',
                   border: 'border-blue-200',
@@ -520,7 +545,7 @@ const Dashboard = () => {
                 { 
                   label: 'Low Stock Items', 
                   value: stats.loading ? '...' : stats.lowStock, 
-                  icon: '⚠️', 
+                  icon: <FaExclamationTriangle className="text-2xl text-red-600" />, 
                   color: 'red',
                   gradient: 'from-red-50 to-rose-50',
                   border: 'border-red-200',
@@ -531,7 +556,7 @@ const Dashboard = () => {
                 { 
                   label: 'Credit Pending', 
                   value: stats.loading ? '...' : formatLKR(stats.creditPending), 
-                  icon: '👤', 
+                  icon: <FaUser className="text-2xl text-emerald-600" />, 
                   color: 'emerald',
                   gradient: 'from-emerald-50 to-teal-50',
                   border: 'border-emerald-200',
@@ -575,24 +600,24 @@ const Dashboard = () => {
               <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between mb-5">
                   <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                    <span className="text-lg">⚡</span> Quick Actions
+                    <FaBolt className="text-lg text-amber-500" /> Quick Actions
                   </h3>
                   <span className="text-xs text-gray-400 font-mono">Press 1-9</span>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {[
-                    { label: '💵 Cash Bill', onClick: handleNewCashBill, color: 'amber', shortcut: '1' },
-                    { label: '📝 Credit Bill', onClick: handleNewCreditBill, color: 'blue', shortcut: '2' },
+                    { label: 'Cash Bill', onClick: handleNewCashBill, color: 'amber', shortcut: '1' },
+                    { label: 'Credit Bill', onClick: handleNewCreditBill, color: 'blue', shortcut: '2' },
                     ...(isAdmin() ? [
-                      { label: '📦 Add Product', onClick: handleAddProduct, color: 'emerald', shortcut: '3' },
-                      { label: '🛒 Purchases', onClick: handlePurchases, color: 'violet', shortcut: '4' },
-                      { label: '📊 Reports', onClick: handleViewReports, color: 'purple', shortcut: '0' },
-                      { label: '🧾 Cheques', onClick: handleViewCheques, color: 'indigo', shortcut: '9' },
-                      { label: '💸 Expenses', onClick: handleViewExpenses, color: 'rose', shortcut: '8' },
+                      { label: 'Add Product', onClick: handleAddProduct, color: 'emerald', shortcut: '3' },
+                      { label: 'Purchases', onClick: handlePurchases, color: 'violet', shortcut: '4' },
+                      { label: 'Reports', onClick: handleViewReports, color: 'purple', shortcut: '0' },
+                      { label: 'Cheques', onClick: handleViewCheques, color: 'indigo', shortcut: '9' },
+                      { label: 'Expenses', onClick: handleViewExpenses, color: 'rose', shortcut: '8' },
                     ] : []),
-                    { label: '⏳ Pending', onClick: handlePendingBills, color: 'orange', shortcut: '5' },
-                    { label: '✅ Paid', onClick: handlePaidBills, color: 'emerald', shortcut: '6' },
-                    { label: '👥 Customers', onClick: handleCustomers, color: 'cyan', shortcut: '7' },
+                    { label: 'Pending Bills', onClick: handlePendingBills, color: 'orange', shortcut: '5' },
+                    { label: 'Paid Bills', onClick: handlePaidBills, color: 'emerald', shortcut: '6' },
+                    { label: 'Customers', onClick: handleCustomers, color: 'cyan', shortcut: '7' },
                   ].map((action, idx) => (
                     <button 
                       key={idx}
@@ -615,7 +640,7 @@ const Dashboard = () => {
                 {/* Recent Activity - Enhanced */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
                   <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <span className="text-lg">🔔</span> Recent Activity
+                    <FaBell className="text-lg text-amber-500" /> Recent Activity
                   </h3>
                   {activityLoading ? (
                     <div className="space-y-3">
@@ -694,7 +719,7 @@ const Dashboard = () => {
               <details className="group">
                 <summary className="flex items-center justify-between cursor-pointer list-none">
                   <span className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                    <span>⌨️</span> Keyboard Shortcuts Reference
+                    <FaKeyboard className="text-gray-500" /> Keyboard Shortcuts Reference
                   </span>
                   <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
                 </summary>

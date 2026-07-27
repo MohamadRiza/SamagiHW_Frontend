@@ -398,6 +398,226 @@ const ProductConfirmationModal = ({ product, isOpen, onClose, onConfirm, formatL
   );
 };
 
+// 🎨 Custom Item Confirmation Modal Component
+const CustomItemConfirmationModal = ({ isOpen, onClose, onConfirm, initialName }) => {
+  const [itemName, setItemName] = useState('');
+  const [unitPrice, setUnitPrice] = useState(0);
+  const [quantity, setQuantity] = useState(1);
+  const [discountLKR, setDiscountLKR] = useState(0);
+  const [focusedField, setFocusedField] = useState('itemName');
+
+  const nameInputRef = useRef(null);
+  const priceInputRef = useRef(null);
+  const qtyInputRef = useRef(null);
+  const discInputRef = useRef(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setItemName(initialName || '');
+      setUnitPrice(0);
+      setQuantity(1);
+      setDiscountLKR(0);
+      setFocusedField('itemName');
+      setTimeout(() => {
+        nameInputRef.current?.focus();
+        nameInputRef.current?.select();
+      }, 50);
+    }
+  }, [isOpen, initialName]);
+
+  const handleConfirm = () => {
+    if (!itemName.trim()) {
+      toast.error('⚠️ Item Name is required');
+      return;
+    }
+    if (quantity <= 0) {
+      toast.error('⚠️ Quantity must be greater than 0');
+      return;
+    }
+    if (unitPrice < 0) {
+      toast.error('⚠️ Unit Price cannot be negative');
+      return;
+    }
+    if (discountLKR < 0) {
+      toast.error('⚠️ Discount cannot be negative');
+      return;
+    }
+    if (discountLKR > unitPrice) {
+      toast.error('⚠️ Discount cannot exceed Unit Price');
+      return;
+    }
+
+    onConfirm({
+      product_name: itemName.trim(),
+      unit_price: parseFloat(unitPrice) || 0,
+      quantity: parseInt(quantity) || 1,
+      discount_lkr: parseFloat(discountLKR) || 0
+    });
+    onClose();
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      onClose();
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (focusedField === 'itemName') {
+        setFocusedField('unitPrice');
+      } else if (focusedField === 'unitPrice') {
+        setFocusedField('quantity');
+      } else if (focusedField === 'quantity') {
+        setFocusedField('discountLKR');
+      } else if (focusedField === 'discountLKR') {
+        handleConfirm();
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (focusedField === 'itemName') {
+      nameInputRef.current?.focus();
+    } else if (focusedField === 'unitPrice') {
+      priceInputRef.current?.focus();
+      priceInputRef.current?.select();
+    } else if (focusedField === 'quantity') {
+      qtyInputRef.current?.focus();
+      qtyInputRef.current?.select();
+    } else if (focusedField === 'discountLKR') {
+      discInputRef.current?.focus();
+      discInputRef.current?.select();
+    }
+  }, [focusedField]);
+
+  if (!isOpen) return null;
+
+  const itemTotal = (parseFloat(unitPrice) || 0) * (parseInt(quantity) || 0);
+  const totalDiscount = (parseFloat(discountLKR) || 0) * (parseInt(quantity) || 0);
+  const finalTotal = Math.max(0, itemTotal - totalDiscount);
+
+  return (
+    <div 
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" 
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div 
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg border border-gray-200 overflow-hidden animate-in fade-in zoom-in duration-200 outline-none"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white text-xl">
+              ➕
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">Add Custom Item</h3>
+              <p className="text-xs text-white/80">⌨️ Enter to navigate fields, ESC to cancel</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors">
+            ✕
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Item Name</label>
+            <input
+              ref={nameInputRef}
+              type="text"
+              value={itemName}
+              onChange={(e) => setItemName(e.target.value)}
+              onFocus={() => setFocusedField('itemName')}
+              placeholder="Enter product name..."
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-base font-medium"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Unit Price (LKR)</label>
+              <input
+                ref={priceInputRef}
+                type="number"
+                min="0"
+                step="0.01"
+                value={unitPrice || ''}
+                onChange={(e) => setUnitPrice(parseFloat(e.target.value) || 0)}
+                onFocus={() => setFocusedField('unitPrice')}
+                placeholder="0.00"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none font-semibold"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Quantity</label>
+              <input
+                ref={qtyInputRef}
+                type="number"
+                min="1"
+                value={quantity || ''}
+                onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                onFocus={() => setFocusedField('quantity')}
+                placeholder="1"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none font-semibold"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Discount per Item (LKR)</label>
+            <input
+              ref={discInputRef}
+              type="number"
+              min="0"
+              step="0.01"
+              value={discountLKR || ''}
+              onChange={(e) => setDiscountLKR(parseFloat(e.target.value) || 0)}
+              onFocus={() => setFocusedField('discountLKR')}
+              placeholder="0.00"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none font-semibold"
+            />
+          </div>
+
+          {/* Pricing Preview */}
+          <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 mt-2 space-y-2">
+            <div className="flex justify-between text-sm text-gray-600">
+              <span>Subtotal:</span>
+              <span>LKR {itemTotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-sm text-red-600">
+              <span>Total Discount:</span>
+              <span>- LKR {totalDiscount.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-base font-bold text-gray-900 border-t pt-2">
+              <span>Net Total:</span>
+              <span className="text-primary-700">LKR {finalTotal.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="bg-gray-50 px-6 py-4 flex gap-3 justify-end border-t border-gray-100">
+          <button type="button" onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-xl transition-all font-semibold">
+            Cancel
+          </button>
+          <button type="button" onClick={handleConfirm} className="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl transition-all shadow-md font-bold">
+            Add to Bill
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
 // 👤 Credit Customer Modal Component - FULL KEYBOARD NAVIGATION
 const CreditCustomerModal = ({ isOpen, onClose, onConfirm, customers, formatLKR }) => {
   const [customerType, setCustomerType] = useState('existing');
@@ -1188,6 +1408,7 @@ const CashBilling = () => {
   const [barcodeScannerMode, setBarcodeScannerMode] = useState(false);
   
   const [showProductModal, setShowProductModal] = useState(false);
+  const [showCustomModal, setShowCustomModal] = useState(false);
   const [pendingProduct, setPendingProduct] = useState(null);
   const [showCreditModal, setShowCreditModal] = useState(false);
   
@@ -1380,6 +1601,10 @@ const CashBilling = () => {
       } else if (e.key === 'F9') {
         e.preventDefault();
         handleCheckout();
+      } else if (e.altKey && e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        setShowCustomModal(true);
+        setShowSuggestions(false);
       }
       
       // Customer dropdown navigation (credit only)
@@ -1461,7 +1686,7 @@ const CashBilling = () => {
   }, [
     showCustomerDropdown, showSuggestions, suggestions, customers, 
     selectedSuggestionIndex, customerSearchIndex, barcodeScannerMode, 
-    cart, paymentMethod, showProductModal, showCreditModal,
+    cart, paymentMethod, showProductModal, showCreditModal, showCustomModal,
     selectedCartItemIndex
   ]);
 
@@ -1483,6 +1708,37 @@ const CashBilling = () => {
       searchInputRef.current?.focus();
     }
   }, [barcodeScannerMode]);
+
+  const confirmAddCustomToCart = useCallback((customItemData) => {
+    const uniqueId = `custom-${Date.now()}`;
+    setCart(prev => {
+      const safePrev = Array.isArray(prev) ? prev : [];
+      return [...safePrev, {
+        product_id: uniqueId,
+        is_custom: true,
+        product_name: customItemData.product_name,
+        barcode: 'CUSTOM',
+        short_form: 'Custom Item',
+        unit_price: customItemData.unit_price,
+        quantity: customItemData.quantity,
+        max_stock: 999999,
+        discount_mode: 'fixed',
+        discount_value: customItemData.discount_lkr,
+        discount_type: 'fixed',
+        auto_discount_lkr: 0,
+        discount_lkr: customItemData.discount_lkr
+      }];
+    });
+    
+    playScanSound();
+    setHighlightRow(uniqueId);
+    setTimeout(() => setHighlightRow(null), 800);
+    
+    toast.success(`✓ Added Custom: ${customItemData.product_name} × ${customItemData.quantity}`);
+    setShowCustomModal(false);
+    setSearchQuery('');
+    searchInputRef.current?.focus();
+  }, []);
 
   const confirmAddToCart = useCallback((modalData) => {
     if (!pendingProduct || !pendingProduct.id) return;
@@ -1582,6 +1838,9 @@ const CashBilling = () => {
       if (suggestions[index]) {
         handleProductSelect(suggestions[index]);
       }
+    } else {
+      setShowCustomModal(true);
+      setShowSuggestions(false);
     }
   };
 
@@ -1730,16 +1989,22 @@ const CashBilling = () => {
     <head>
       <title>Receipt - ${billData.billNumber}</title>
       <style>
-        @page { size: 80mm auto; margin: 0; }
+        @page { size: auto; margin: 4mm; }
         body { 
           font-family: 'Courier New', monospace; 
           font-size: 11px; 
-          padding: 8px; 
           margin: 0; 
+          padding: 0; 
           background: #fff; 
           color: #000;
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
+        }
+        .receipt-container {
+          width: 100%;
+          max-width: 80mm;
+          margin: 0 auto;
+          box-sizing: border-box;
         }
         .header { 
           text-align: center; 
@@ -1838,60 +2103,69 @@ const CashBilling = () => {
             print-color-adjust: exact;
             print-adjust: exact;
           }
-          @page { margin: 0; }
+          .receipt-container {
+            max-width: 100% !important;
+            width: 100% !important;
+          }
         }
       </style>
     </head>
     <body>
-      <div class="header">
-        <h2>SAMAGI MOTORS</h2>
-        <div class="company-info">
-          <div>TP: 077 779 7410</div>
-          <div>Madagalle Road, Kubukgate</div>
-          <div>(Kurunegala)</div>
+      <div class="receipt-container">
+        <div class="header">
+          <div style="text-align: center; margin-bottom: 6px;">
+            <img src="${window.location.origin}/Logo.jpg" alt="Samagi Motors" style="max-height: 50px; width: auto; object-fit: contain; filter: grayscale(100%);" />
+          </div>
+          <h2>SAMAGI MOTORS</h2>
+          <div class="company-info">
+            <div>TP: 077 779 7410</div>
+            <div>Madagalle Road, Kubukgate</div>
+            <div>(Kurunegala)</div>
+          </div>
+          <div class="bill-type">POS SYSTEM - ${paymentMethod} BILL</div>
+          <div class="date-time">${new Date().toLocaleString('en-LK')}</div>
         </div>
-        <div class="bill-type">POS SYSTEM - ${paymentMethod} BILL</div>
-        <div class="date-time">${new Date().toLocaleString('en-LK')}</div>
-      </div>
-      <div class="bill-info">
-        <span>Bill #: ${billData.billNumber}</span>
-        <span>Cashier: ${billData.cashier}</span>
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th style="width:45%">Item</th>
-            <th style="text-align:center">Qty</th>
-            <th style="text-align:right">Price</th>
-            <th style="text-align:right">Disc</th>
-            <th style="text-align:right">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${Array.isArray(cartItems) ? cartItems.map(item => `
+        <div class="bill-info">
+          <span>Bill #: ${billData.billNumber}</span>
+          <span>Cashier: ${billData.cashier}</span>
+        </div>
+        <table>
+          <thead>
             <tr>
-              <td>${item.product_name}<br><span style="font-size:9px;color:#333">${item.barcode}</span></td>
-              <td style="text-align:center">${item.quantity}</td>
-              <td style="text-align:right">${(item.unit_price || 0).toFixed(2)}</td>
-              <td style="text-align:right;color:#c00">${(item.discount_lkr || 0) > 0 ? '-' + ((item.discount_lkr * item.quantity) || 0).toFixed(2) : '-'}</td>
-              <td style="text-align:right;font-weight:bold">${(((item.unit_price || 0) * (item.quantity || 1)) - ((item.discount_lkr || 0) * (item.quantity || 1))).toFixed(2)}</td>
+              <th style="width:45%">Item</th>
+              <th style="text-align:center">Qty</th>
+              <th style="text-align:right">Price</th>
+              <th style="text-align:right">Disc</th>
+              <th style="text-align:right">Total</th>
             </tr>
-          `).join('') : ''}
-        </tbody>
-      </table>
-      <div class="totals">
-        <div><span>Subtotal:</span><span>LKR ${totalAmount.toFixed(2)}</span></div>
-        <div style="color:#c00"><span>Discount:</span><span>- LKR ${totalDiscount.toFixed(2)}</span></div>
-        <div class="grand-total"><span>TOTAL:</span><span>LKR ${grandTotal.toFixed(2)}</span></div>
-        <div class="payment-info">PAYMENT: ${paymentMethod}</div>
-      </div>
-      <div class="footer">
-        <p>Thank you for shopping with us!</p>
-        <p>Goods once sold cannot be returned</p>
-        <p>TP: 077 779 7410 | Madagalle Road, Kubukgate, Kurunegala</p>
-      </div>
-      <div class="audit">
-        Audit: ${billData.billNumber} | ${new Date().toISOString()} | Cashier: ${billData.cashier}
+          </thead>
+          <tbody>
+            ${Array.isArray(cartItems) ? cartItems.map(item => `
+              <tr>
+                <td>${item.product_name}<br><span style="font-size:9px;color:#333">${item.barcode}</span></td>
+                <td style="text-align:center">${item.quantity}</td>
+                <td style="text-align:right">${(item.unit_price || 0).toFixed(2)}</td>
+                <td style="text-align:right;color:#c00">${(item.discount_lkr || 0) > 0 ? '-' + ((item.discount_lkr * item.quantity) || 0).toFixed(2) : '-'}</td>
+                <td style="text-align:right;font-weight:bold">${(((item.unit_price || 0) * (item.quantity || 1)) - ((item.discount_lkr || 0) * (item.quantity || 1))).toFixed(2)}</td>
+              </tr>
+            `).join('') : ''}
+          </tbody>
+        </table>
+        <div class="totals">
+          <div><span>Subtotal:</span><span>LKR ${totalAmount.toFixed(2)}</span></div>
+          <div style="color:#c00"><span>Discount:</span><span>- LKR ${totalDiscount.toFixed(2)}</span></div>
+          <div class="grand-total"><span>TOTAL:</span><span>LKR ${grandTotal.toFixed(2)}</span></div>
+          <div class="payment-info">PAYMENT: ${paymentMethod}</div>
+        </div>
+        <div class="footer">
+          <p>Thank you for shopping with us!</p>
+          <p>Goods once sold cannot be returned</p>
+          <p>TP: 077 779 7410 | Madagalle Road, Kubukgate, Kurunegala</p>
+          <p style="margin-top: 10px; border-top: 1px dashed #555; padding-top: 6px; font-size: 8px; color: #555; text-transform: lowercase;">developed with precision by nexasoft<br>0787979131 / nexasoft.site</p>
+        </div>
+        <div class="audit">
+          Audit: ${billData.billNumber} | ${new Date().toISOString()} | Cashier: ${billData.cashier}
+        </div>
       </div>
       <script>
         window.onload = () => { setTimeout(() => window.print(), 300); };
@@ -1912,16 +2186,22 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
     <head>
       <title>Credit Bill - ${billData.billNumber}</title>
       <style>
-        @page { size: 80mm auto; margin: 0; }
+        @page { size: auto; margin: 4mm; }
         body { 
           font-family: 'Courier New', monospace; 
           font-size: 10px; 
-          padding: 8px; 
           margin: 0; 
+          padding: 0; 
           background: #fff; 
           color: #000;
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
+        }
+        .receipt-container {
+          width: 100%;
+          max-width: 80mm;
+          margin: 0 auto;
+          box-sizing: border-box;
         }
         .header { 
           text-align: center; 
@@ -2025,64 +2305,73 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
             print-color-adjust: exact;
             print-adjust: exact;
           }
-          @page { margin: 0; }
+          .receipt-container {
+            max-width: 100% !important;
+            width: 100% !important;
+          }
         }
       </style>
     </head>
     <body>
-      <div class="header">
-        <h2>SAMAGI MOTORS</h2>
-        <div class="company-info">
-          <div>TP: 077 779 7410</div>
-          <div>Madagalle Road, Kubukgate</div>
-          <div>(Kurunegala)</div>
+      <div class="receipt-container">
+        <div class="header">
+          <div style="text-align: center; margin-bottom: 6px;">
+            <img src="${window.location.origin}/Logo.jpg" alt="Samagi Motors" style="max-height: 50px; width: auto; object-fit: contain; filter: grayscale(100%);" />
+          </div>
+          <h2>SAMAGI MOTORS</h2>
+          <div class="company-info">
+            <div>TP: 077 779 7410</div>
+            <div>Madagalle Road, Kubukgate</div>
+            <div>(Kurunegala)</div>
+          </div>
+          <div class="bill-type">POS SYSTEM - <span class="credit-badge">CREDIT BILL</span></div>
+          <div class="date-time">${new Date().toLocaleString('en-LK')}</div>
         </div>
-        <div class="bill-type">POS SYSTEM - <span class="credit-badge">CREDIT BILL</span></div>
-        <div class="date-time">${new Date().toLocaleString('en-LK')}</div>
-      </div>
-      <div class="customer-info">
-        <div><strong>Bill #:</strong> ${billData.billNumber}</div>
-        <div><strong>Customer:</strong> ${customer?.name || 'N/A'}${customer?.company_name ? ` (${customer.company_name})` : ''}</div>
-        <div><strong>Mobile:</strong> ${customer?.mobile || 'N/A'}</div>
-        <div><strong>Address:</strong> ${customer?.address || 'N/A'}${customer?.city ? `, ${customer.city}` : ''}</div>
-        <div><strong>Due Date:</strong> ${billData.due_date ? new Date(billData.due_date).toLocaleDateString('en-LK') : 'N/A'}</div>
-        ${safeOutstanding > 0 ? `<div><strong>Previous Outstanding:</strong> LKR ${safeOutstanding.toFixed(2)}</div>` : ''}
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th style="width:40%">Item</th>
-            <th style="text-align:center">Qty</th>
-            <th style="text-align:right">Price</th>
-            <th style="text-align:right">Disc</th>
-            <th style="text-align:right">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${Array.isArray(cartItems) ? cartItems.map(item => `
+        <div class="customer-info">
+          <div><strong>Bill #:</strong> ${billData.billNumber}</div>
+          <div><strong>Customer:</strong> ${customer?.name || 'N/A'}${customer?.company_name ? ` (${customer.company_name})` : ''}</div>
+          <div><strong>Mobile:</strong> ${customer?.mobile || 'N/A'}</div>
+          <div><strong>Address:</strong> ${customer?.address || 'N/A'}${customer?.city ? `, ${customer.city}` : ''}</div>
+          <div><strong>Due Date:</strong> ${billData.due_date ? new Date(billData.due_date).toLocaleDateString('en-LK') : 'N/A'}</div>
+          ${safeOutstanding > 0 ? `<div><strong>Previous Outstanding:</strong> LKR ${safeOutstanding.toFixed(2)}</div>` : ''}
+        </div>
+        <table>
+          <thead>
             <tr>
-              <td>${item.product_name || 'N/A'}<br><span style="font-size:8px;color:#333">${item.barcode || ''}</span></td>
-              <td style="text-align:center">${item.quantity || 1}</td>
-              <td style="text-align:right">${(item.unit_price || 0).toFixed(2)}</td>
-              <td style="text-align:right;color:#c00">${(item.discount_lkr || 0) > 0 ? '-' + ((item.discount_lkr * item.quantity) || 0).toFixed(2) : '-'}</td>
-              <td style="text-align:right;font-weight:bold">${(((item.unit_price || 0) * (item.quantity || 1)) - ((item.discount_lkr || 0) * (item.quantity || 1))).toFixed(2)}</td>
+              <th style="width:40%">Item</th>
+              <th style="text-align:center">Qty</th>
+              <th style="text-align:right">Price</th>
+              <th style="text-align:right">Disc</th>
+              <th style="text-align:right">Total</th>
             </tr>
-          `).join('') : ''}
-        </tbody>
-      </table>
-      <div class="totals">
-        <div><span>Subtotal:</span><span>LKR ${totalAmount.toFixed(2)}</span></div>
-        <div style="color:#c00"><span>Discount:</span><span>- LKR ${totalDiscount.toFixed(2)}</span></div>
-        <div class="grand-total"><span>TOTAL:</span><span>LKR ${grandTotal.toFixed(2)}</span></div>
-      </div>
-      <div class="outstanding">
-        NEW OUTSTANDING: LKR ${(safeOutstanding + grandTotal).toFixed(2)}
-      </div>
-      <div class="footer">
-        <p>Thank you for your business!</p>
-        <p>Please settle the bill by the due date</p>
-        <p>Cashier: ${billData.cashier || 'N/A'}</p>
-        <p>TP: 077 779 7410 | Madagalle Road, Kubukgate, Kurunegala</p>
+          </thead>
+          <tbody>
+            ${Array.isArray(cartItems) ? cartItems.map(item => `
+              <tr>
+                <td>${item.product_name || 'N/A'}<br><span style="font-size:8px;color:#333">${item.barcode || ''}</span></td>
+                <td style="text-align:center">${item.quantity || 1}</td>
+                <td style="text-align:right">${(item.unit_price || 0).toFixed(2)}</td>
+                <td style="text-align:right;color:#c00">${(item.discount_lkr || 0) > 0 ? '-' + ((item.discount_lkr * item.quantity) || 0).toFixed(2) : '-'}</td>
+                <td style="text-align:right;font-weight:bold">${(((item.unit_price || 0) * (item.quantity || 1)) - ((item.discount_lkr || 0) * (item.quantity || 1))).toFixed(2)}</td>
+              </tr>
+            `).join('') : ''}
+          </tbody>
+        </table>
+        <div class="totals">
+          <div><span>Subtotal:</span><span>LKR ${totalAmount.toFixed(2)}</span></div>
+          <div style="color:#c00"><span>Discount:</span><span>- LKR ${totalDiscount.toFixed(2)}</span></div>
+          <div class="grand-total"><span>TOTAL:</span><span>LKR ${grandTotal.toFixed(2)}</span></div>
+        </div>
+        <div class="outstanding">
+          NEW OUTSTANDING: LKR ${(safeOutstanding + grandTotal).toFixed(2)}
+        </div>
+        <div class="footer">
+          <p>Thank you for your business!</p>
+          <p>Please settle the bill by the due date</p>
+          <p>Cashier: ${billData.cashier || 'N/A'}</p>
+          <p>TP: 077 779 7410 | Madagalle Road, Kubukgate, Kurunegala</p>
+          <p style="margin-top: 10px; border-top: 1px dashed #555; padding-top: 6px; font-size: 8px; color: #555; text-transform: lowercase;">developed with precision by nexasoft<br>0787979131 / nexasoft.site</p>
+        </div>
       </div>
       <script>
         window.onload = () => { setTimeout(() => window.print(), 300); };
@@ -2120,9 +2409,10 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
     
     try {
       const billItems = cart.map(item => ({
-        product_id: item.product_id,
+        product_id: item.is_custom ? 999999 : item.product_id,
+        is_custom: item.is_custom || false,
         product_name: item.product_name,
-        barcode: item.barcode,
+        barcode: item.barcode || 'CUSTOM',
         unit_price: parseFloat(item.unit_price) || 0,
         quantity: parseInt(item.quantity) || 1,
         discount_lkr: parseFloat(item.discount_lkr) || 0
@@ -2196,6 +2486,16 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
         }}
         onConfirm={confirmAddToCart}
         formatLKR={formatLKR}
+      />
+      
+      <CustomItemConfirmationModal
+        isOpen={showCustomModal}
+        onClose={() => {
+          setShowCustomModal(false);
+          searchInputRef.current?.focus();
+        }}
+        onConfirm={confirmAddCustomToCart}
+        initialName={searchQuery}
       />
       
       <CreditCustomerModal
@@ -2342,7 +2642,7 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
                 </span>
               </div>
               
-              {showSuggestions && Array.isArray(suggestions) && suggestions.length > 0 && (
+              {showSuggestions && searchQuery.trim().length >= 2 && (
                 <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
                   {suggestions.map((product, index) => (
                     <button
@@ -2377,6 +2677,19 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
                       </div>
                     </button>
                   ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCustomModal(true);
+                      setShowSuggestions(false);
+                    }}
+                    className="w-full text-left px-5 py-4 bg-primary-50/50 hover:bg-primary-100 flex items-center justify-between transition-all font-semibold text-primary-700 border-t border-gray-100"
+                  >
+                    <span className="flex items-center gap-2">
+                      ➕ Add Custom Item: "{searchQuery}"
+                    </span>
+                    <kbd className="px-2 py-0.5 bg-primary-200 text-primary-800 text-xs rounded font-mono font-bold">Alt+C</kbd>
+                  </button>
                 </div>
               )}
             </div>

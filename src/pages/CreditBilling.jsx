@@ -209,6 +209,225 @@ const ProductConfirmationModal = ({ product, isOpen, onClose, onConfirm, formatL
   );
 };
 
+// 🎨 Custom Item Confirmation Modal Component
+const CustomItemConfirmationModal = ({ isOpen, onClose, onConfirm, initialName }) => {
+  const [itemName, setItemName] = useState('');
+  const [unitPrice, setUnitPrice] = useState(0);
+  const [quantity, setQuantity] = useState(1);
+  const [discountLKR, setDiscountLKR] = useState(0);
+  const [focusedField, setFocusedField] = useState('itemName');
+
+  const nameInputRef = useRef(null);
+  const priceInputRef = useRef(null);
+  const qtyInputRef = useRef(null);
+  const discInputRef = useRef(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setItemName(initialName || '');
+      setUnitPrice(0);
+      setQuantity(1);
+      setDiscountLKR(0);
+      setFocusedField('itemName');
+      setTimeout(() => {
+        nameInputRef.current?.focus();
+        nameInputRef.current?.select();
+      }, 50);
+    }
+  }, [isOpen, initialName]);
+
+  const handleConfirm = () => {
+    if (!itemName.trim()) {
+      toast.error('⚠️ Item Name is required');
+      return;
+    }
+    if (quantity <= 0) {
+      toast.error('⚠️ Quantity must be greater than 0');
+      return;
+    }
+    if (unitPrice < 0) {
+      toast.error('⚠️ Unit Price cannot be negative');
+      return;
+    }
+    if (discountLKR < 0) {
+      toast.error('⚠️ Discount cannot be negative');
+      return;
+    }
+    if (discountLKR > unitPrice) {
+      toast.error('⚠️ Discount cannot exceed Unit Price');
+      return;
+    }
+
+    onConfirm({
+      product_name: itemName.trim(),
+      unit_price: parseFloat(unitPrice) || 0,
+      quantity: parseInt(quantity) || 1,
+      discount_lkr: parseFloat(discountLKR) || 0
+    });
+    onClose();
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      onClose();
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (focusedField === 'itemName') {
+        setFocusedField('unitPrice');
+      } else if (focusedField === 'unitPrice') {
+        setFocusedField('quantity');
+      } else if (focusedField === 'quantity') {
+        setFocusedField('discountLKR');
+      } else if (focusedField === 'discountLKR') {
+        handleConfirm();
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (focusedField === 'itemName') {
+      nameInputRef.current?.focus();
+    } else if (focusedField === 'unitPrice') {
+      priceInputRef.current?.focus();
+      priceInputRef.current?.select();
+    } else if (focusedField === 'quantity') {
+      qtyInputRef.current?.focus();
+      qtyInputRef.current?.select();
+    } else if (focusedField === 'discountLKR') {
+      discInputRef.current?.focus();
+      discInputRef.current?.select();
+    }
+  }, [focusedField]);
+
+  if (!isOpen) return null;
+
+  const itemTotal = (parseFloat(unitPrice) || 0) * (parseInt(quantity) || 0);
+  const totalDiscount = (parseFloat(discountLKR) || 0) * (parseInt(quantity) || 0);
+  const finalTotal = Math.max(0, itemTotal - totalDiscount);
+
+  return (
+    <div 
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" 
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div 
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg border border-gray-200 overflow-hidden animate-in fade-in zoom-in duration-200 outline-none"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white text-xl">
+              ➕
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">Add Custom Item</h3>
+              <p className="text-xs text-white/80">⌨️ Enter to navigate fields, ESC to cancel</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors">
+            ✕
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Item Name</label>
+            <input
+              ref={nameInputRef}
+              type="text"
+              value={itemName}
+              onChange={(e) => setItemName(e.target.value)}
+              onFocus={() => setFocusedField('itemName')}
+              placeholder="Enter product name..."
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-base font-medium"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Unit Price (LKR)</label>
+              <input
+                ref={priceInputRef}
+                type="number"
+                min="0"
+                step="0.01"
+                value={unitPrice || ''}
+                onChange={(e) => setUnitPrice(parseFloat(e.target.value) || 0)}
+                onFocus={() => setFocusedField('unitPrice')}
+                placeholder="0.00"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none font-semibold"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Quantity</label>
+              <input
+                ref={qtyInputRef}
+                type="number"
+                min="1"
+                value={quantity || ''}
+                onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                onFocus={() => setFocusedField('quantity')}
+                placeholder="1"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none font-semibold"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Discount per Item (LKR)</label>
+            <input
+              ref={discInputRef}
+              type="number"
+              min="0"
+              step="0.01"
+              value={discountLKR || ''}
+              onChange={(e) => setDiscountLKR(parseFloat(e.target.value) || 0)}
+              onFocus={() => setFocusedField('discountLKR')}
+              placeholder="0.00"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none font-semibold"
+            />
+          </div>
+
+          {/* Pricing Preview */}
+          <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 mt-2 space-y-2">
+            <div className="flex justify-between text-sm text-gray-600">
+              <span>Subtotal:</span>
+              <span>LKR {itemTotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-sm text-red-600">
+              <span>Total Discount:</span>
+              <span>- LKR {totalDiscount.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-base font-bold text-gray-900 border-t pt-2">
+              <span>Net Total:</span>
+              <span className="text-purple-700">LKR {finalTotal.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="bg-gray-50 px-6 py-4 flex gap-3 justify-end border-t border-gray-100">
+          <button type="button" onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-xl transition-all font-semibold">
+            Cancel
+          </button>
+          <button type="button" onClick={handleConfirm} className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl transition-all shadow-md font-bold">
+            Add to Bill
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const CreditBilling = () => {
   const { user } = useAuth();
   
@@ -240,6 +459,7 @@ const CreditBilling = () => {
   
   // ✅ NEW: Modal & keyboard states
   const [showProductModal, setShowProductModal] = useState(false);
+  const [showCustomModal, setShowCustomModal] = useState(false);
   const [pendingProduct, setPendingProduct] = useState(null);
   const [selectedCartItemIndex, setSelectedCartItemIndex] = useState(-1);
   const [newCustomerFocusedField, setNewCustomerFocusedField] = useState('customerType');
@@ -330,10 +550,15 @@ const CreditBilling = () => {
       }
       
       // === PAYMENT/CART SHORTCUTS (if not in modal) ===
-      if (!showProductModal && !showSuggestions) {
+      if (!showProductModal && !showSuggestions && !showCustomModal) {
         if (e.key === 'F2') { e.preventDefault(); searchInputRef.current?.focus(); }
         else if (e.key === 'F4') { e.preventDefault(); clearCart(); }
         else if (e.key === 'F9') { e.preventDefault(); handleCreateBill(); }
+        else if (e.altKey && e.key.toLowerCase() === 'c') {
+          e.preventDefault();
+          setShowCustomModal(true);
+          setShowSuggestions(false);
+        }
       }
       
       // === CUSTOMER DROPDOWN NAVIGATION ===
@@ -362,7 +587,7 @@ const CreditBilling = () => {
       }
       
       // === CART NAVIGATION ===
-      if (Array.isArray(cart) && cart.length > 0 && !showProductModal && !showSuggestions) {
+      if (Array.isArray(cart) && cart.length > 0 && !showProductModal && !showSuggestions && !showCustomModal) {
         if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedCartItemIndex(i => { const n = i < cart.length - 1 ? i + 1 : i; cartItemRefs.current[n]?.scrollIntoView({ block: 'nearest' }); return n; }); }
         else if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedCartItemIndex(i => { const n = i > 0 ? i - 1 : i; cartItemRefs.current[n]?.scrollIntoView({ block: 'nearest' }); return n; }); }
         else if ((e.key === 'Backspace' || e.key === 'Delete') && selectedCartItemIndex >= 0) {
@@ -373,7 +598,7 @@ const CreditBilling = () => {
       }
       
       // === NEW CUSTOMER FORM NAVIGATION ===
-      if (customerType === 'new' && !showProductModal && !newCustomerFormCollapsed) {
+      if (customerType === 'new' && !showProductModal && !newCustomerFormCollapsed && !showCustomModal) {
         const fields = ['customerType', 'name', 'mobile', 'email', 'address', 'city', 'nic_id'];
         const idx = fields.indexOf(newCustomerFocusedField);
         if (e.key === 'Enter' || e.key === 'Tab') {
@@ -402,7 +627,7 @@ const CreditBilling = () => {
       // === ESC TO CLOSE ===
       if (e.key === 'Escape') {
         e.preventDefault();
-        setShowSuggestions(false); setShowCustomerDropdown(false); setShowProductModal(false);
+        setShowSuggestions(false); setShowCustomerDropdown(false); setShowProductModal(false); setShowCustomModal(false);
         setSelectedSuggestionIndex(-1); setCustomerSearchIndex(-1); setSelectedCartItemIndex(-1);
         setPendingProduct(null);
         if (!barcodeScannerMode) setSearchQuery('');
@@ -411,7 +636,7 @@ const CreditBilling = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showCustomerDropdown, showSuggestions, suggestions, filteredCustomers, selectedSuggestionIndex, customerSearchIndex, barcodeScannerMode, cart, customerType, newCustomerFocusedField, showProductModal, selectedCartItemIndex, newCustomerFormCollapsed]);
+  }, [showCustomerDropdown, showSuggestions, suggestions, filteredCustomers, selectedSuggestionIndex, customerSearchIndex, barcodeScannerMode, cart, customerType, newCustomerFocusedField, showProductModal, showCustomModal, selectedCartItemIndex, newCustomerFormCollapsed]);
 
   // 🛒 Handle product selection → show modal
   const handleProductSelect = useCallback((product) => {
@@ -419,6 +644,37 @@ const CreditBilling = () => {
     setPendingProduct(product); setShowProductModal(true); setShowSuggestions(false); setSelectedSuggestionIndex(-1); setSearchQuery('');
     if (!barcodeScannerMode) searchInputRef.current?.focus();
   }, [barcodeScannerMode]);
+
+  const confirmAddCustomToCart = useCallback((customItemData) => {
+    const uniqueId = `custom-${Date.now()}`;
+    setCart(prev => {
+      const safePrev = Array.isArray(prev) ? prev : [];
+      return [...safePrev, {
+        product_id: uniqueId,
+        is_custom: true,
+        product_name: customItemData.product_name,
+        barcode: 'CUSTOM',
+        short_form: 'Custom Item',
+        unit_price: customItemData.unit_price,
+        quantity: customItemData.quantity,
+        max_stock: 999999,
+        discount_mode: 'fixed',
+        discount_value: customItemData.discount_lkr,
+        discount_type: 'fixed',
+        auto_discount_lkr: 0,
+        discount_lkr: customItemData.discount_lkr
+      }];
+    });
+    
+    playScanSound();
+    setHighlightRow(uniqueId);
+    setTimeout(() => setHighlightRow(null), 800);
+    
+    toast.success(`✓ Added Custom: ${customItemData.product_name} × ${customItemData.quantity}`);
+    setShowCustomModal(false);
+    setSearchQuery('');
+    searchInputRef.current?.focus();
+  }, []);
 
   // ✅ Confirm add from modal
   const confirmAddToCart = useCallback((data) => {
@@ -466,6 +722,9 @@ const CreditBilling = () => {
     if (Array.isArray(suggestions) && suggestions.length > 0) {
       const idx = selectedSuggestionIndex >= 0 && selectedSuggestionIndex < suggestions.length ? selectedSuggestionIndex : 0;
       if (suggestions[idx]) handleProductSelect(suggestions[idx]);
+    } else {
+      setShowCustomModal(true);
+      setShowSuggestions(false);
     }
   };
 
@@ -526,7 +785,15 @@ const CreditBilling = () => {
     
     setProcessing(true);
     try {
-      const items = cart.map(i => ({ product_id: i.product_id, product_name: i.product_name, barcode: i.barcode, unit_price: parseFloat(i.unit_price) || 0, quantity: parseInt(i.quantity) || 1, discount_lkr: parseFloat(i.discount_lkr) || 0 }));
+      const items = cart.map(i => ({
+        product_id: i.is_custom ? 999999 : i.product_id,
+        is_custom: i.is_custom || false,
+        product_name: i.product_name,
+        barcode: i.barcode || 'CUSTOM',
+        unit_price: parseFloat(i.unit_price) || 0,
+        quantity: parseInt(i.quantity) || 1,
+        discount_lkr: parseFloat(i.discount_lkr) || 0
+      }));
       const res = await CreditBillService.create({ customer_id: customer.id, customer_name: customer.name, customer_mobile: customer.mobile, items, due_date: dueDate, notes: notes?.trim() || null });
       if (res?.success && res.data) {
         toast.success(`✅ Credit Bill #${res.data.billNumber}`);
@@ -550,17 +817,23 @@ const CreditBilling = () => {
       <head>
         <title>Credit Bill - ${bill.billNumber}</title>
         <style>
-          @page { size: 80mm auto; margin: 0; }
+          @page { size: auto; margin: 4mm; }
           body { 
             font-family: 'Courier New', monospace; 
             font-size: 10px; 
-            padding: 8px; 
             margin: 0; 
+            padding: 0; 
             background: #fff; 
             color: #000;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
             print-adjust: exact;
+          }
+          .receipt-container {
+            width: 100%;
+            max-width: 80mm;
+            margin: 0 auto;
+            box-sizing: border-box;
           }
           .header { 
             text-align: center; 
@@ -664,64 +937,73 @@ const CreditBilling = () => {
               print-color-adjust: exact;
               print-adjust: exact;
             }
-            @page { margin: 0; }
+            .receipt-container {
+              max-width: 100% !important;
+              width: 100% !important;
+            }
           }
         </style>
       </head>
       <body>
-        <div class="header">
-          <h2>SAMAGI MOTORS</h2>
-          <div class="company-info">
-            <div>TP: 077 779 7410</div>
-            <div>Madagalle Road, Kubukgate</div>
-            <div>(Kurunegala)</div>
+        <div class="receipt-container">
+          <div class="header">
+            <div style="text-align: center; margin-bottom: 6px;">
+              <img src="${window.location.origin}/Logo.jpg" alt="Samagi Motors" style="max-height: 50px; width: auto; object-fit: contain; filter: grayscale(100%);" />
+            </div>
+            <h2>SAMAGI MOTORS</h2>
+            <div class="company-info">
+              <div>TP: 077 779 7410</div>
+              <div>Madagalle Road, Kubukgate</div>
+              <div>(Kurunegala)</div>
+            </div>
+            <div class="bill-type">SAMAGI MOTORS - <span class="credit-badge">CREDIT BILL</span></div>
+            <div class="date-time">${new Date().toLocaleString('en-LK')}</div>
           </div>
-          <div class="bill-type">SAMAGI MOTORS - <span class="credit-badge">CREDIT BILL</span></div>
-          <div class="date-time">${new Date().toLocaleString('en-LK')}</div>
-        </div>
-        <div class="customer-info">
-          <div><strong>Bill #:</strong> ${bill.billNumber}</div>
-          <div><strong>Customer:</strong> ${cust?.name || 'N/A'}${cust?.company_name ? ` (${cust.company_name})` : ''}</div>
-          <div><strong>Mobile:</strong> ${cust?.mobile || 'N/A'}</div>
-          <div><strong>Address:</strong> ${cust?.address || 'N/A'}${cust?.city ? `, ${cust.city}` : ''}</div>
-          <div><strong>Due Date:</strong> ${bill.due_date ? new Date(bill.due_date).toLocaleDateString('en-LK') : 'N/A'}</div>
-          ${out > 0 ? `<div><strong>Previous Outstanding:</strong> LKR ${out.toFixed(2)}</div>` : ''}
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th style="width:40%">Item</th>
-              <th style="text-align:center">Qty</th>
-              <th style="text-align:right">Price</th>
-              <th style="text-align:right">Disc</th>
-              <th style="text-align:right">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${Array.isArray(items) ? items.map(it => `
+          <div class="customer-info">
+            <div><strong>Bill #:</strong> ${bill.billNumber}</div>
+            <div><strong>Customer:</strong> ${cust?.name || 'N/A'}${cust?.company_name ? ` (${cust.company_name})` : ''}</div>
+            <div><strong>Mobile:</strong> ${cust?.mobile || 'N/A'}</div>
+            <div><strong>Address:</strong> ${cust?.address || 'N/A'}${cust?.city ? `, ${cust.city}` : ''}</div>
+            <div><strong>Due Date:</strong> ${bill.due_date ? new Date(bill.due_date).toLocaleDateString('en-LK') : 'N/A'}</div>
+            ${out > 0 ? `<div><strong>Previous Outstanding:</strong> LKR ${out.toFixed(2)}</div>` : ''}
+          </div>
+          <table>
+            <thead>
               <tr>
-                <td>${it.product_name || 'N/A'}<br><span style="font-size:8px;color:#333">${it.barcode || ''}</span></td>
-                <td style="text-align:center">${it.quantity || 1}</td>
-                <td style="text-align:right">${(it.unit_price || 0).toFixed(2)}</td>
-                <td style="text-align:right;color:#c00">${(it.discount_lkr || 0) > 0 ? '-' + ((it.discount_lkr * it.quantity) || 0).toFixed(2) : '-'}</td>
-                <td style="text-align:right;font-weight:bold">${(((it.unit_price || 0) * (it.quantity || 1)) - ((it.discount_lkr || 0) * (it.quantity || 1))).toFixed(2)}</td>
+                <th style="width:40%">Item</th>
+                <th style="text-align:center">Qty</th>
+                <th style="text-align:right">Price</th>
+                <th style="text-align:right">Disc</th>
+                <th style="text-align:right">Total</th>
               </tr>
-            `).join('') : ''}
-          </tbody>
-        </table>
-        <div class="totals">
-          <div><span>Subtotal:</span><span>LKR ${totalAmount.toFixed(2)}</span></div>
-          <div style="color:#c00"><span>Discount:</span><span>- LKR ${totalDiscount.toFixed(2)}</span></div>
-          <div class="grand-total"><span>TOTAL:</span><span>LKR ${grandTotal.toFixed(2)}</span></div>
-        </div>
-        <div class="outstanding">
-          NEW OUTSTANDING: LKR ${(grandTotal + out).toFixed(2)}
-        </div>
-        <div class="footer">
-          <p>Thank you for your business!</p>
-          <p>Please settle by due date</p>
-          <p>Cashier: ${bill.cashier || 'N/A'}</p>
-          <p>TP: 077 779 7410 | Madagalle Road, Kubukgate, Kurunegala</p>
+            </thead>
+            <tbody>
+              ${Array.isArray(items) ? items.map(it => `
+                <tr>
+                  <td>${it.product_name || 'N/A'}<br><span style="font-size:8px;color:#333">${it.barcode || ''}</span></td>
+                  <td style="text-align:center">${it.quantity || 1}</td>
+                  <td style="text-align:right">${(it.unit_price || 0).toFixed(2)}</td>
+                  <td style="text-align:right;color:#c00">${(it.discount_lkr || 0) > 0 ? '-' + ((it.discount_lkr * it.quantity) || 0).toFixed(2) : '-'}</td>
+                  <td style="text-align:right;font-weight:bold">${(((it.unit_price || 0) * (it.quantity || 1)) - ((it.discount_lkr || 0) * (it.quantity || 1))).toFixed(2)}</td>
+                </tr>
+              `).join('') : ''}
+            </tbody>
+          </table>
+          <div class="totals">
+            <div><span>Subtotal:</span><span>LKR ${totalAmount.toFixed(2)}</span></div>
+            <div style="color:#c00"><span>Discount:</span><span>- LKR ${totalDiscount.toFixed(2)}</span></div>
+            <div class="grand-total"><span>TOTAL:</span><span>LKR ${grandTotal.toFixed(2)}</span></div>
+          </div>
+          <div class="outstanding">
+            NEW OUTSTANDING: LKR ${(grandTotal + out).toFixed(2)}
+          </div>
+          <div class="footer">
+            <p>Thank you for your business!</p>
+            <p>Please settle by due date</p>
+            <p>Cashier: ${bill.cashier || 'N/A'}</p>
+            <p>TP: 077 779 7410 | Madagalle Road, Kubukgate, Kurunegala</p>
+            <p style="margin-top: 10px; border-top: 1px dashed #555; padding-top: 6px; font-size: 8px; color: #555; text-transform: lowercase;">developed with precision by nexasoft<br>0787979131 / nexasoft.site</p>
+          </div>
         </div>
         <script>
           window.onload = () => { setTimeout(() => window.print(), 300); };
@@ -741,6 +1023,17 @@ const CreditBilling = () => {
       
       {/* ✅ Product Modal */}
       <ProductConfirmationModal product={pendingProduct} isOpen={showProductModal} onClose={() => { setShowProductModal(false); setPendingProduct(null); searchInputRef.current?.focus(); }} onConfirm={confirmAddToCart} formatLKR={formatLKR} />
+      
+      {/* ✅ Custom Product Modal */}
+      <CustomItemConfirmationModal
+        isOpen={showCustomModal}
+        onClose={() => {
+          setShowCustomModal(false);
+          searchInputRef.current?.focus();
+        }}
+        onConfirm={confirmAddCustomToCart}
+        initialName={searchQuery}
+      />
       
       <main className="flex-1 flex flex-col">
         <header className="bg-white shadow-sm border-b px-6 py-4">
@@ -893,9 +1186,22 @@ const CreditBilling = () => {
                 <span className="flex items-center gap-1"><kbd className="px-2 py-0.5 bg-gray-100 rounded border font-mono">ESC</kbd> Cancel</span>
                 <span className="flex items-center gap-1"><kbd className="px-2 py-0.5 bg-gray-100 rounded border font-mono">Ctrl+1/2/3</kbd> Payment</span>
               </div>
-              {showSuggestions && suggestions.length > 0 && (
+              {showSuggestions && searchQuery.trim().length >= 2 && (
                 <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
                   {suggestions.map((p, i) => (<button key={p?.id || i} ref={el => suggestionRefs.current[i] = el} onClick={() => p && handleProductSelect(p)} className={`w-full text-left px-5 py-4 border-b border-gray-100 last:border-0 flex justify-between items-center transition-all group ${i === selectedSuggestionIndex ? 'bg-purple-100 border-l-4 border-l-purple-600' : 'hover:bg-purple-50'}`}><div className="flex-1"><div className="flex items-center gap-2"><p className={`font-bold ${i === selectedSuggestionIndex ? 'text-purple-700' : 'text-gray-900 group-hover:text-purple-700'}`}>{p.item_name || 'N/A'}</p>{(p.discount_value || 0) > 0 && <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full font-medium">-{p.discount_value}{p.discount_type === 'percent' ? '%' : ''}</span>}</div><p className="text-xs text-gray-500 mt-1"><span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded">{p.barcode || ''}</span>{p.short_form && <span className="ml-2">• {p.short_form}</span>}</p></div><div className="text-right ml-4"><p className="font-bold text-purple-700 text-lg">{formatLKR(p.selling_price)}</p><p className="text-xs text-gray-500">Stock: <span className={(p.stock_quantity || 0) <= 10 ? 'text-red-600 font-medium' : 'text-green-600'}>{p.stock_quantity || 0}</span></p></div></button>))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCustomModal(true);
+                      setShowSuggestions(false);
+                    }}
+                    className="w-full text-left px-5 py-4 bg-purple-50/50 hover:bg-purple-100 flex items-center justify-between transition-all font-semibold text-purple-700 border-t border-gray-100"
+                  >
+                    <span className="flex items-center gap-2">
+                      ➕ Add Custom Item: "{searchQuery}"
+                    </span>
+                    <kbd className="px-2 py-0.5 bg-purple-200 text-purple-800 text-xs rounded font-mono font-bold">Alt+C</kbd>
+                  </button>
                 </div>
               )}
             </div>

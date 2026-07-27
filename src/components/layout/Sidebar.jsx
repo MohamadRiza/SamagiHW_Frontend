@@ -3,37 +3,48 @@ import { useAuth } from '../../contexts/AuthContext';
 import SidebarHeader from './SidebarHeader';
 import SidebarItem from './SidebarItem';
 import SidebarFooter from './SidebarFooter';
+import { 
+  FaHome, 
+  FaCashRegister, 
+  FaBox, 
+  FaShoppingCart, 
+  FaUsers, 
+  FaMoneyBillWave, 
+  FaMoneyCheck, 
+  FaChartBar, 
+  FaCog 
+} from 'react-icons/fa';
 
 const getMenuItems = (role) => [
-  { label: 'Dashboard', icon: '🏠', path: '/dashboard', roles: ['admin', 'staff'] },
+  { label: 'Dashboard', icon: <FaHome />, path: '/dashboard', roles: ['admin', 'staff'] },
   {
-    label: 'Billing', icon: '💰', roles: ['admin', 'staff'],
+    label: 'Billing', icon: <FaCashRegister />, roles: ['admin', 'staff'],
     children: [
       { label: 'Cash Bill', path: '/billing/cash', roles: ['admin', 'staff'] },
       { label: 'Credit Bill', path: '/billing/credit', roles: ['admin', 'staff'] },
     ]
   },
-  { label: 'Stock Management', icon: '📦', path: '/stock', roles: ['admin'] },
-  { label: 'Purchases', icon: '🛒', path: '/purchases', roles: ['admin', 'staff'] },
+  { label: 'Stock Management', icon: <FaBox />, path: '/stock', roles: ['admin'] },
+  { label: 'Purchases', icon: <FaShoppingCart />, path: '/purchases', roles: ['admin', 'staff'] },
   {
-    label: 'Credit Customers', icon: '👤', roles: ['admin', 'staff'],
+    label: 'Credit Customers', icon: <FaUsers />, roles: ['admin', 'staff'],
     children: [
       { label: 'Pending Bills', path: '/customers/pending', roles: ['admin', 'staff'] },
       { label: 'Paid Bills', path: '/customers/paid', roles: ['admin', 'staff'] },
       { label: 'Customer List', path: '/customers/list', roles: ['admin'] },
     ]
   },
-  { label: 'Expenses', icon: '💸', path: '/expenses', roles: ['admin'] },
-  { label: 'Cheques', icon: '🧾', path: '/cheques', roles: ['admin', 'staff'] },
+  { label: 'Expenses', icon: <FaMoneyBillWave />, path: '/expenses', roles: ['admin'] },
+  { label: 'Cheques', icon: <FaMoneyCheck />, path: '/cheques', roles: ['admin', 'staff'] },
   {
-    label: 'Reports', icon: '📊', path: '/reports', roles: ['admin', 'staff'],
+    label: 'Reports', icon: <FaChartBar />, path: '/reports', roles: ['admin', 'staff'],
     children: [
       { label: 'Today Summary', path: '/reports/today', roles: ['admin', 'staff'] },
       { label: 'Sales Report', path: '/reports/sales', roles: ['admin'] },
       { label: 'Stock Report', path: '/reports/stock', roles: ['admin'] },
     ]
   },
-  { label: 'Settings', icon: '⚙', path: '/settings', roles: ['admin'] },
+  { label: 'Settings', icon: <FaCog />, path: '/settings', roles: ['admin'] },
 ];
 
 const Sidebar = () => {
