@@ -1,10 +1,11 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { FaEdit, FaPrint, FaTrash, FaEye } from "react-icons/fa";
 import BarcodeGenerator from "./BarcodeGenerator";
 
 const ACTION_MENU_OPTIONS = [
-  { key: 'edit',   label: 'Edit Product',   icon: '✏️',  shortcut: 'E', color: 'text-blue-700  bg-blue-50  hover:bg-blue-100  border-blue-200'  },
-  { key: 'print',  label: 'Print Barcode',  icon: '🖨️', shortcut: 'P', color: 'text-purple-700 bg-purple-50 hover:bg-purple-100 border-purple-200' },
-  { key: 'delete', label: 'Delete Product', icon: '🗑️', shortcut: 'D', color: 'text-red-700    bg-red-50   hover:bg-red-100   border-red-200'   },
+  { key: 'edit',   label: 'Edit Product',   icon: FaEdit,  shortcut: 'E', color: 'text-blue-700  bg-blue-50  hover:bg-blue-100  border-blue-200'  },
+  { key: 'print',  label: 'Print Barcode',  icon: FaPrint, shortcut: 'P', color: 'text-purple-700 bg-purple-50 hover:bg-purple-100 border-purple-200' },
+  { key: 'delete', label: 'Delete Product', icon: FaTrash, shortcut: 'D', color: 'text-red-700    bg-red-50   hover:bg-red-100   border-red-200'   },
 ];
 
 const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) => {
@@ -76,11 +77,11 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
     setSelectedIndex((i) => Math.min(i, filteredProducts.length - 1));
   }, [filteredProducts.length]);
 
-  // Scroll selected row into view
+  // Scroll selected row into view (inside the table's own scrollable container)
   useEffect(() => {
     if (selectedIndex >= 0 && tableRef.current) {
       const rows = tableRef.current.querySelectorAll("tbody tr[data-row]");
-      rows[selectedIndex]?.scrollIntoView({ block: "nearest" });
+      rows[selectedIndex]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
     }
   }, [selectedIndex]);
 
@@ -119,9 +120,15 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
     const handler = (e) => {
       if (actionProduct) return;
 
-      const tag = document.activeElement?.tagName;
-      const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+      const activeEl = document.activeElement;
+      const isInSearch = activeEl === searchRef.current;
+      const activeTag  = activeEl?.tagName;
+      const isTyping   = activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT';
+      // Detect if focus is on a table row (to avoid double-triggering ArrowUp/Down
+      // since tr's own onKeyDown also handles them — we let the row handler do it)
+      const isInRow = activeEl?.closest('tr[data-row]') != null;
 
+      // ── Ctrl+F / '/' → focus search ──
       if ((e.ctrlKey && e.key === 'f') || (!isTyping && e.key === '/')) {
         e.preventDefault();
         searchRef.current?.focus();
@@ -129,14 +136,35 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
         return;
       }
 
-      if (isTyping) return;
+      // ── ArrowDown from search bar: jump to first table row ──
+      if (isInSearch && e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (filteredProducts.length > 0) {
+          setSelectedIndex(0);
+          // focus the first row so subsequent arrows work via row handler
+          setTimeout(() => {
+            tableRef.current?.querySelector('tbody tr[data-row]')?.focus();
+          }, 0);
+        }
+        return;
+      }
 
+      // ── Skip if typing (other inputs) or already handled by row handler ──
+      if (isTyping || isInRow) return;
+
+      // ── Arrow navigation (when no row is focused) ──
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSelectedIndex((i) => Math.min(i + 1, filteredProducts.length - 1));
+        setSelectedIndex((i) => {
+          if (filteredProducts.length === 0) return -1;
+          return i === -1 ? 0 : Math.min(i + 1, filteredProducts.length - 1);
+        });
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setSelectedIndex((i) => Math.max(i - 1, 0));
+        setSelectedIndex((i) => {
+          if (i <= 0) return 0;
+          return i - 1;
+        });
       } else if (e.key === 'Enter' && selectedIndex >= 0) {
         e.preventDefault();
         setActionProduct(filteredProducts[selectedIndex]);
@@ -168,13 +196,8 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
     }
   };
 
-  // ── Search field keyboard ─────────────────────────────────────────────────
+  // ── Search field keyboard (Escape only — ArrowDown handled in global handler) ──
   const handleSearchKeyDown = (e) => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setSelectedIndex(0);
-      tableRef.current?.querySelector("tbody tr[data-row]")?.focus();
-    }
     if (e.key === 'Escape') {
       setSearchTerm('');
       searchRef.current?.blur();
@@ -189,14 +212,16 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
 
           {/* Search */}
-          <div className="relative flex-1 min-w-0 w-full">
-            <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
-              fill="none" stroke="currentColor" viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+          <div className="relative flex-1 min-w-0 w-full flex items-center">
+            <div className="absolute left-3 flex items-center justify-center pointer-events-none">
+              <svg
+                className="w-5 h-5 text-gray-400"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
             <input
               ref={searchRef}
               type="text"
@@ -243,8 +268,8 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
         </p>
       </div>
 
-      {/* ── Table ──────────────────────────────────────────────────────── */}
-      <div className="overflow-x-auto" ref={tableRef}>
+      {/* ── Table (vertical scroll lives here so scrollIntoView works) ── */}
+      <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-240px)]" ref={tableRef}>
         <table className="w-full">
           <thead className="bg-gray-50 sticky top-0 z-10">
             <tr>
@@ -294,10 +319,28 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
                     onClick={() => setSelectedIndex(idx)}
                     onDoubleClick={() => { setSelectedIndex(idx); setActionProduct(product); }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') { setActionProduct(product); }
-                      if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIndex(Math.min(idx + 1, filteredProducts.length - 1)); }
-                      if (e.key === 'ArrowUp')   { e.preventDefault(); setSelectedIndex(Math.max(idx - 1, 0)); }
-                      if (e.key === 'Escape')     { setSelectedIndex(-1); }
+                      // ArrowUp/Down: handled here (row is focused) AND prevented from
+                      // bubbling to the global window handler via the isInRow guard.
+                      if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        const next = Math.min(idx + 1, filteredProducts.length - 1);
+                        setSelectedIndex(next);
+                        // Move DOM focus to the next row for continuous keyboard nav
+                        const rows = tableRef.current?.querySelectorAll('tbody tr[data-row]');
+                        rows?.[next]?.focus();
+                      } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        const prev = Math.max(idx - 1, 0);
+                        setSelectedIndex(prev);
+                        const rows = tableRef.current?.querySelectorAll('tbody tr[data-row]');
+                        rows?.[prev]?.focus();
+                      } else if (e.key === 'Enter') {
+                        e.preventDefault();
+                        setActionProduct(product);
+                      } else if (e.key === 'Escape') {
+                        setSelectedIndex(-1);
+                        tableRef.current?.querySelector('tbody tr[data-row]')?.blur();
+                      }
                     }}
                     className={`transition-colors outline-none cursor-pointer
                       ${isSelected
@@ -323,11 +366,11 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
                         </code>
                         <button
                           onClick={(e) => { e.stopPropagation(); setPreviewProduct(product); }}
-                          className="text-primary-600 hover:text-primary-700 text-xs focus:outline-none"
+                          className="text-primary-600 hover:text-primary-700 text-xs focus:outline-none p-1 hover:bg-primary-50 rounded"
                           title="View Barcode"
                           tabIndex={-1}
                         >
-                          👁️
+                          <FaEye className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>
@@ -393,19 +436,25 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                           title="Edit (E)"
                           tabIndex={-1}
-                        >✏️</button>
+                        >
+                          <FaEdit className="w-3.5 h-3.5" />
+                        </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); onPrintBarcode({ ...product, final_price: finalPrice }); }}
                           className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
                           title="Print Barcode (P)"
                           tabIndex={-1}
-                        >🖨️</button>
+                        >
+                          <FaPrint className="w-3.5 h-3.5" />
+                        </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); onDelete(product.id); }}
                           className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                           title="Delete (D)"
                           tabIndex={-1}
-                        >🗑️</button>
+                        >
+                          <FaTrash className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -439,23 +488,26 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
 
             {/* Options */}
             <div className="space-y-2">
-              {ACTION_MENU_OPTIONS.map((opt, i) => (
-                <button
-                  key={opt.key}
-                  onClick={() => dispatchAction(opt.key, actionProduct)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all
-                    ${actionMenuIdx === i
-                      ? `${opt.color} ring-2 ring-offset-1 ring-current scale-[1.01]`
-                      : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-                    }`}
-                >
-                  <span className="text-lg">{opt.icon}</span>
-                  <span className="flex-1 text-left">{opt.label}</span>
-                  <kbd className="text-xs px-1.5 py-0.5 bg-white/70 rounded border border-current opacity-60">
-                    {opt.shortcut}
-                  </kbd>
-                </button>
-              ))}
+              {ACTION_MENU_OPTIONS.map((opt, i) => {
+                const IconComponent = opt.icon;
+                return (
+                  <button
+                    key={opt.key}
+                    onClick={() => dispatchAction(opt.key, actionProduct)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all
+                      ${actionMenuIdx === i
+                        ? `${opt.color} ring-2 ring-offset-1 ring-current scale-[1.01]`
+                        : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                      }`}
+                  >
+                    <IconComponent className="w-4 h-4 shrink-0" />
+                    <span className="flex-1 text-left">{opt.label}</span>
+                    <kbd className="text-xs px-1.5 py-0.5 bg-white/70 rounded border border-current opacity-60">
+                      {opt.shortcut}
+                    </kbd>
+                  </button>
+                );
+              })}
             </div>
 
             <p className="mt-3 text-xs text-gray-400 text-center">

@@ -4,6 +4,10 @@ import { Sidebar } from '../components/layout';
 import CreditBillService from '../services/creditBill.service';
 import CustomerService from '../services/customer.service';
 import { Toaster, toast } from 'react-hot-toast';
+import {
+  FaFolder, FaFolderOpen, FaSyncAlt, FaPrint,
+  FaPhone, FaMapMarkerAlt, FaCheckCircle, FaChartLine
+} from 'react-icons/fa';
 
 const PaidBills = () => {
   const { user } = useAuth();
@@ -190,11 +194,11 @@ const PaidBills = () => {
   // Get payment method badge style
   const getPaymentBadge = (bill) => {
     const notes = bill.notes?.toLowerCase() || '';
-    if (notes.includes('cash')) return { label: '💵 Cash', class: 'bg-green-100 text-green-700' };
-    if (notes.includes('card')) return { label: '💳 Card', class: 'bg-blue-100 text-blue-700' };
-    if (notes.includes('bank') || notes.includes('transfer')) return { label: '🏦 Transfer', class: 'bg-purple-100 text-purple-700' };
-    if (notes.includes('cheque')) return { label: '🧾 Cheque', class: 'bg-amber-100 text-amber-700' };
-    return { label: '✓ Paid', class: 'bg-emerald-100 text-emerald-700' };
+    if (notes.includes('cash')) return { label: 'Cash', class: 'bg-green-100 text-green-700' };
+    if (notes.includes('card')) return { label: 'Card', class: 'bg-blue-100 text-blue-700' };
+    if (notes.includes('bank') || notes.includes('transfer')) return { label: 'Transfer', class: 'bg-purple-100 text-purple-700' };
+    if (notes.includes('cheque')) return { label: 'Cheque', class: 'bg-amber-100 text-amber-700' };
+    return { label: 'Paid', class: 'bg-emerald-100 text-emerald-700' };
   };
 
   // Reprint paid bill receipt
@@ -337,9 +341,6 @@ const PaidBills = () => {
     <body>
       <div class="receipt-container">
         <div class="header">
-          <div style="text-align: center; margin-bottom: 6px;">
-            <img src="${window.location.origin}/Logo.jpg" alt="Samagi Motors" style="max-height: 50px; width: auto; object-fit: contain; filter: grayscale(100%);" />
-          </div>
           <h2>SAMAGI MOTORS</h2>
           <div class="company-info">
             <div>TP: 077 779 7410</div>
@@ -429,7 +430,9 @@ const PaidBills = () => {
         <header className="bg-white shadow-sm border-b px-6 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white text-xl shadow-lg">📁</div>
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white text-xl shadow-lg">
+                <FaFolderOpen className="w-5 h-5 text-white" />
+              </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Paid Bills</h1>
                 <p className="text-sm text-gray-500">View settled bills by customer</p>
@@ -510,17 +513,19 @@ const PaidBills = () => {
         <div className="bg-white border-b px-6 py-4">
           <div className="flex flex-col lg:flex-row gap-4">
             {/* Search */}
-            <div className="flex-1 relative">
+            <div className="flex-1 relative flex items-center">
               <input
                 type="text"
                 value={filters.search}
                 onChange={(e) => setFilters({...filters, search: e.target.value})}
-                placeholder="🔍 Search customers or bills..."
-                className="input-pos pl-10"
+                placeholder="Search customers or bills..."
+                className="input-pos pl-10 h-10 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors w-full"
               />
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+              <div className="absolute left-3 flex items-center justify-center pointer-events-none">
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
             </div>
             
             {/* Date Range */}
@@ -563,21 +568,23 @@ const PaidBills = () => {
               </button>
             </div>
             
-            {/* ✅ Folder Controls */}
+            {/* Folder Controls */}
             <div className="flex gap-2">
               <button
                 onClick={expandAll}
-                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-200 text-sm transition-colors"
+                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-200 text-sm transition-colors flex items-center gap-1.5 font-medium text-gray-700"
                 title="Expand all customers"
               >
-                📂 Expand All
+                <FaFolderOpen className="text-amber-500 w-4 h-4" />
+                <span>Expand All</span>
               </button>
               <button
                 onClick={collapseAll}
-                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-200 text-sm transition-colors"
+                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-200 text-sm transition-colors flex items-center gap-1.5 font-medium text-gray-700"
                 title="Collapse all customers"
               >
-                📁 Collapse All
+                <FaFolder className="text-amber-500 w-4 h-4" />
+                <span>Collapse All</span>
               </button>
             </div>
             
@@ -585,15 +592,17 @@ const PaidBills = () => {
             <button
               onClick={fetchPaidBills}
               disabled={loading}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2 font-medium text-sm"
             >
               {loading ? (
                 <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                 </svg>
-              ) : '🔄'}
-              Refresh
+              ) : (
+                <FaSyncAlt className="w-3.5 h-3.5" />
+              )}
+              <span>Refresh</span>
             </button>
           </div>
           
@@ -602,20 +611,20 @@ const PaidBills = () => {
             <div className="mt-3 flex flex-wrap gap-2">
               {filters.search && (
                 <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                  🔍 "{filters.search}"
-                  <button onClick={() => setFilters({...filters, search: ''})} className="hover:text-blue-900">×</button>
+                  "{filters.search}"
+                  <button onClick={() => setFilters({...filters, search: ''})} className="hover:text-blue-900 ml-1">×</button>
                 </span>
               )}
               {filters.dateFrom && (
                 <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
-                  📅 From: {formatDateForInput(filters.dateFrom)}
-                  <button onClick={() => setFilters({...filters, dateFrom: ''})} className="hover:text-purple-900">×</button>
+                  From: {formatDateForInput(filters.dateFrom)}
+                  <button onClick={() => setFilters({...filters, dateFrom: ''})} className="hover:text-purple-900 ml-1">×</button>
                 </span>
               )}
               {filters.dateTo && (
                 <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
-                  📅 To: {formatDateForInput(filters.dateTo)}
-                  <button onClick={() => setFilters({...filters, dateTo: ''})} className="hover:text-purple-900">×</button>
+                  To: {formatDateForInput(filters.dateTo)}
+                  <button onClick={() => setFilters({...filters, dateTo: ''})} className="hover:text-purple-900 ml-1">×</button>
                 </span>
               )}
               <button
@@ -628,7 +637,7 @@ const PaidBills = () => {
           )}
         </div>
         
-        {/* ✅ Folder View - Customer → Paid Bills */}
+        {/* Folder View - Customer → Paid Bills */}
         <div className="flex-1 overflow-auto p-6">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-64 text-gray-400">
@@ -640,7 +649,7 @@ const PaidBills = () => {
             </div>
           ) : customerList.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-              <div className="text-6xl mb-4 opacity-30">📁</div>
+              <FaFolder className="text-5xl mb-3 opacity-30 text-emerald-500" />
               <p className="text-lg font-semibold">No paid bills found</p>
               <p className="text-sm mt-1">Adjust filters or check back later</p>
             </div>
@@ -697,8 +706,19 @@ const PaidBills = () => {
                             {customer.name}
                             {customer.company_name && <span className="text-gray-500 font-normal"> ({customer.company_name})</span>}
                           </p>
-                          <p className="text-xs text-gray-500">
-                            📞 {customer.mobile} • 📍 {customer.city}
+                          <p className="text-xs text-gray-500 flex items-center gap-3">
+                            {customer.mobile && (
+                              <span className="inline-flex items-center gap-1">
+                                <FaPhone className="w-3 h-3 text-emerald-600" />
+                                {customer.mobile}
+                              </span>
+                            )}
+                            {customer.city && (
+                              <span className="inline-flex items-center gap-1">
+                                <FaMapMarkerAlt className="w-3 h-3 text-emerald-600" />
+                                {customer.city}
+                              </span>
+                            )}
                           </p>
                         </div>
                         
@@ -721,17 +741,17 @@ const PaidBills = () => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              toast.success(`📊 View ${customer.name}'s payment history`);
+                              toast.success(`View ${customer.name}'s payment history`);
                             }}
                             className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
                             title="View customer history"
                           >
-                            📈
+                            <FaChartLine className="w-4 h-4" />
                           </button>
                         </div>
                       </div>
                       
-                      {/* ✅ Expanded Paid Bills List */}
+                      {/* Expanded Paid Bills List */}
                       {isExpanded && (
                         <div className="bg-gray-50/50 border-t border-gray-100">
                           <div className="pl-16 pr-4 py-2">
@@ -796,7 +816,7 @@ const PaidBills = () => {
                                         className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-all"
                                         title="Reprint paid bill"
                                       >
-                                        🧾
+                                        <FaPrint className="w-4 h-4" />
                                       </button>
                                     </div>
                                   </div>

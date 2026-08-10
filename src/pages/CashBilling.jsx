@@ -6,6 +6,21 @@ import BillService from '../services/bill.service';
 import CustomerService from '../services/customer.service';
 import CreditBillService from '../services/creditBill.service';
 import { Toaster, toast } from 'react-hot-toast';
+import { 
+  FaPlus, 
+  FaTimes, 
+  FaMoneyBillWave, 
+  FaBarcode, 
+  FaShoppingCart, 
+  FaUser, 
+  FaBuilding, 
+  FaSearch, 
+  FaExclamationTriangle,
+  FaCheck,
+  FaBoxOpen,
+  FaPercentage,
+  FaMoneyCheckAlt
+} from 'react-icons/fa';
 
 // 🔊 Professional scan sound
 const playScanSound = () => {
@@ -190,197 +205,180 @@ const ProductConfirmationModal = ({ product, isOpen, onClose, onConfirm, formatL
     >
       <div 
         ref={modalRef}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg border border-gray-200 overflow-hidden animate-in fade-in zoom-in duration-200 outline-none"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl border border-gray-200 overflow-hidden animate-in fade-in zoom-in duration-200 outline-none"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
         tabIndex={-1}
       >
         {/* Modal Header */}
-        <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white text-xl">
-              🛍️
+        <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-5 py-3 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white text-base">
+              <FaBoxOpen />
             </div>
             <div>
-              <h3 id="product-modal-title" className="text-lg font-bold text-white">Add to Cart</h3>
-              <p className="text-xs text-white/80">⌨️ Use ↑↓ to adjust, Enter to confirm</p>
+              <h3 id="product-modal-title" className="text-base font-bold text-white">Add to Cart</h3>
+              <p className="text-[11px] text-white/80">Use ↑↓ to adjust, Enter to confirm</p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+            className="w-7 h-7 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
             aria-label="Close modal"
           >
-            ✕
+            <FaTimes />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+        <div className="p-4 space-y-3 overflow-y-auto max-h-[75vh]">
           {/* Product Info */}
-          <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
-            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center text-primary-700 font-bold text-2xl flex-shrink-0 shadow-sm">
+          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center text-primary-700 font-bold text-xl flex-shrink-0 shadow-sm">
               {(product?.item_name || '?').charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="font-bold text-gray-900 text-lg truncate">{product?.item_name || 'N/A'}</h4>
-              <p className="text-sm text-gray-500 font-mono mt-1 bg-gray-100 inline-block px-2 py-0.5 rounded">
-                {product?.barcode || 'No barcode'}
-              </p>
-              {product?.short_form && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-primary-100 text-primary-700 border border-primary-200 mt-2">
-                  {product.short_form}
+              <h4 className="font-bold text-gray-900 text-base truncate">{product?.item_name || 'N/A'}</h4>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xs text-gray-500 font-mono bg-gray-100 px-1.5 py-0.5 rounded">
+                  {product?.barcode || 'No barcode'}
                 </span>
-              )}
+                {product?.short_form && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary-100 text-primary-700 border border-primary-200">
+                    {product.short_form}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-black text-primary-700">{formatLKR(unitPrice)}</p>
-              <p className={`text-xs font-medium ${maxStock <= 10 ? 'text-red-600' : 'text-green-600'}`}>
+              <p className="text-xl font-black text-primary-700">{formatLKR(unitPrice)}</p>
+              <p className={`text-[11px] font-medium ${maxStock <= 10 ? 'text-red-600' : 'text-green-600'}`}>
                 Stock: {maxStock}
               </p>
             </div>
           </div>
 
-          {/* Auto Discount Badge */}
-          {autoDiscount > 0 && discountMode === 'default' && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
-              <span className="text-green-600">✓</span>
-              <span className="text-sm font-medium text-green-700">
-                Auto Discount: {formatLKR(autoDiscount)} ({product?.discount_value}{product?.discount_type === 'percent' ? '%' : ''})
-              </span>
-            </div>
-          )}
-
-          {/* Quantity Selector */}
-          <div className={`p-4 rounded-xl border-2 transition-all ${focusedField === 'quantity' ? 'border-primary-500 bg-primary-50/30 ring-2 ring-primary-200' : 'border-gray-200 bg-gray-50'}`}>
-            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-              Quantity 
-              {focusedField === 'quantity' && <span className="text-xs text-primary-600 font-normal">← Active (↑↓ to adjust)</span>}
-            </label>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => handleQuantityChange(quantity - 1)}
-                className="w-10 h-10 rounded-xl border-2 border-gray-200 hover:border-primary-500 hover:bg-primary-50 flex items-center justify-center text-xl font-bold text-gray-700 transition-colors disabled:opacity-50"
-                disabled={quantity <= 1}
-                aria-label="Decrease quantity"
-              >
-                −
-              </button>
-              <input
-                ref={qtyInputRef}
-                type="number"
-                min="1"
-                max={maxStock}
-                value={quantity}
-                onChange={(e) => handleQuantityChange(e.target.value)}
-                onFocus={() => setFocusedField('quantity')}
-                className="flex-1 text-center text-xl font-bold border-2 border-gray-200 rounded-xl py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none"
-                aria-label="Quantity input"
-              />
-              <button
-                type="button"
-                onClick={() => handleQuantityChange(quantity + 1)}
-                className="w-10 h-10 rounded-xl border-2 border-gray-200 hover:border-primary-500 hover:bg-primary-50 flex items-center justify-center text-xl font-bold text-gray-700 transition-colors disabled:opacity-50"
-                disabled={quantity >= maxStock}
-                aria-label="Increase quantity"
-              >
-                +
-              </button>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">Max available: {maxStock} • Press Enter to continue →</p>
-          </div>
-
-          {/* Discount Controls */}
-          <div className={`p-4 rounded-xl border-2 transition-all ${focusedField === 'discountMode' || focusedField === 'discountValue' ? 'border-primary-500 bg-primary-50/30 ring-2 ring-primary-200' : 'border-gray-200 bg-gray-50'}`}>
-            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-              Discount 
-              {(focusedField === 'discountMode' || focusedField === 'discountValue') && <span className="text-xs text-primary-600 font-normal">← Active</span>}
-            </label>
-            <div className="space-y-3">
-              <select
-                value={discountMode}
-                onChange={(e) => {
-                  setDiscountMode(e.target.value);
-                  if (e.target.value === 'default') {
-                    handleConfirm();
-                  } else {
-                    setFocusedField('discountValue');
-                  }
-                }}
-                onFocus={() => setFocusedField('discountMode')}
-                className={`w-full border-2 rounded-xl py-2.5 px-4 bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-medium outline-none ${
-                  focusedField === 'discountMode' ? 'border-primary-500 ring-2 ring-primary-200' : 'border-gray-200'
-                }`}
-                aria-label="Discount mode selection"
-              >
-                <option value="default">🤖 Auto Discount ({product?.discount_value}{product?.discount_type === 'percent' ? '%' : ''})</option>
-                <option value="percent">📊 Manual Percentage (%)</option>
-                <option value="fixed">💵 Manual Amount (LKR)</option>
-              </select>
-              
-              {discountMode !== 'default' && (
-                <div className="relative">
-                  <input
-                    ref={discountInputRef}
-                    type="number"
-                    min="0"
-                    step={discountMode === 'percent' ? "1" : "0.01"}
-                    max={discountMode === 'percent' ? "100" : unitPrice}
-                    value={discountValue}
-                    onChange={(e) => handleDiscountValueChange(e.target.value)}
-                    onFocus={() => setFocusedField('discountValue')}
-                    className={`w-full text-right border-2 rounded-xl py-2.5 px-4 pr-12 font-medium focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none ${
-                      focusedField === 'discountValue' ? 'border-primary-500 ring-2 ring-primary-200' : 'border-gray-200'
-                    }`}
-                    placeholder={discountMode === 'percent' ? 'Enter %' : 'Enter LKR'}
-                    aria-label={`Discount ${discountMode === 'percent' ? 'percentage' : 'amount'} input`}
-                  />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400">
-                    {discountMode === 'percent' ? '%' : 'LKR'}
-                  </span>
-                </div>
-              )}
-              
-              {discountLKR > 0 && (
-                <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-xl">
-                  <span className="text-sm font-medium text-green-700">Discount per item:</span>
-                  <span className="font-bold text-green-700">{formatLKR(discountLKR)}</span>
-                </div>
-              )}
-            </div>
-            <p className="text-xs text-gray-500 mt-2">
-              {discountMode === 'default' 
-                ? '✓ Auto discount applied • Press Enter to add to cart' 
-                : '↑↓ to adjust value • Press Enter to confirm'}
-            </p>
-          </div>
-
-          {/* Price Summary */}
-          <div className="p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Subtotal ({quantity} × {formatLKR(unitPrice)})</span>
-              <span className="font-medium">{formatLKR(itemTotal)}</span>
-            </div>
-            {totalDiscount > 0 && (
-              <div className="flex justify-between text-sm text-green-600">
-                <span>Discount ({quantity} × {formatLKR(discountLKR)})</span>
-                <span className="font-medium">− {formatLKR(totalDiscount)}</span>
+          {/* 2-Column Grid for Quantity & Discount */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Quantity Selector */}
+            <div className={`p-3 rounded-xl border-2 transition-all ${focusedField === 'quantity' ? 'border-primary-500 bg-primary-50/30 ring-2 ring-primary-200' : 'border-gray-200 bg-gray-50'}`}>
+              <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
+                <span>Quantity</span>
+                {focusedField === 'quantity' && <span className="text-[10px] text-primary-600 font-normal">Active (↑↓)</span>}
+              </label>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleQuantityChange(quantity - 1)}
+                  className="w-9 h-9 rounded-lg border border-gray-300 hover:border-primary-500 hover:bg-primary-50 flex items-center justify-center text-lg font-bold text-gray-700 transition-colors disabled:opacity-50"
+                  disabled={quantity <= 1}
+                  aria-label="Decrease quantity"
+                >
+                  −
+                </button>
+                <input
+                  ref={qtyInputRef}
+                  type="number"
+                  min="1"
+                  max={maxStock}
+                  value={quantity}
+                  onChange={(e) => handleQuantityChange(e.target.value)}
+                  onFocus={() => setFocusedField('quantity')}
+                  className="flex-1 text-center text-lg font-bold border border-gray-300 rounded-lg py-1 focus:ring-2 focus:ring-primary-500 outline-none"
+                  aria-label="Quantity input"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleQuantityChange(quantity + 1)}
+                  className="w-9 h-9 rounded-lg border border-gray-300 hover:border-primary-500 hover:bg-primary-50 flex items-center justify-center text-lg font-bold text-gray-700 transition-colors disabled:opacity-50"
+                  disabled={quantity >= maxStock}
+                  aria-label="Increase quantity"
+                >
+                  +
+                </button>
               </div>
-            )}
-            <div className="border-t border-gray-200 pt-2 flex justify-between">
-              <span className="text-lg font-bold text-gray-900">Total</span>
-              <span className="text-2xl font-black text-primary-700">{formatLKR(finalTotal)}</span>
+              <p className="text-[10px] text-gray-400 mt-1">Max: {maxStock} • Press Enter →</p>
+            </div>
+
+            {/* Discount Controls */}
+            <div className={`p-3 rounded-xl border-2 transition-all ${focusedField === 'discountMode' || focusedField === 'discountValue' ? 'border-primary-500 bg-primary-50/30 ring-2 ring-primary-200' : 'border-gray-200 bg-gray-50'}`}>
+              <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
+                <span>Discount</span>
+                {(focusedField === 'discountMode' || focusedField === 'discountValue') && <span className="text-[10px] text-primary-600 font-normal">Active</span>}
+              </label>
+              <div className="space-y-2">
+                <select
+                  value={discountMode}
+                  onChange={(e) => {
+                    setDiscountMode(e.target.value);
+                    if (e.target.value === 'default') {
+                      handleConfirm();
+                    } else {
+                      setFocusedField('discountValue');
+                    }
+                  }}
+                  onFocus={() => setFocusedField('discountMode')}
+                  className={`w-full text-xs border rounded-lg py-1.5 px-2 bg-white focus:ring-2 focus:ring-primary-500 font-medium outline-none ${
+                    focusedField === 'discountMode' ? 'border-primary-500 ring-2 ring-primary-200' : 'border-gray-300'
+                  }`}
+                  aria-label="Discount mode selection"
+                >
+                  <option value="default">Auto Discount ({product?.discount_value}{product?.discount_type === 'percent' ? '%' : ''})</option>
+                  <option value="percent">Manual Percentage (%)</option>
+                  <option value="fixed">Manual Amount (LKR)</option>
+                </select>
+                
+                {discountMode !== 'default' && (
+                  <div className="relative">
+                    <input
+                      ref={discountInputRef}
+                      type="number"
+                      min="0"
+                      step={discountMode === 'percent' ? "1" : "0.01"}
+                      max={discountMode === 'percent' ? "100" : unitPrice}
+                      value={discountValue}
+                      onChange={(e) => handleDiscountValueChange(e.target.value)}
+                      onFocus={() => setFocusedField('discountValue')}
+                      className={`w-full text-right text-xs border rounded-lg py-1.5 px-2 pr-10 font-medium focus:ring-2 focus:ring-primary-500 outline-none ${
+                        focusedField === 'discountValue' ? 'border-primary-500 ring-2 ring-primary-200' : 'border-gray-300'
+                      }`}
+                      placeholder={discountMode === 'percent' ? 'Enter %' : 'Enter LKR'}
+                      aria-label={`Discount ${discountMode === 'percent' ? 'percentage' : 'amount'} input`}
+                    />
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">
+                      {discountMode === 'percent' ? '%' : 'LKR'}
+                    </span>
+                  </div>
+                )}
+              </div>
+              {discountLKR > 0 && (
+                <p className="text-[10px] text-green-700 font-semibold mt-1">Per item: {formatLKR(discountLKR)}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Price Summary Bar */}
+          <div className="p-3 bg-gradient-to-r from-gray-50 to-primary-50/20 rounded-xl border border-gray-200 flex items-center justify-between">
+            <div className="text-xs">
+              <span className="text-gray-500 font-medium">Subtotal ({quantity} × {formatLKR(unitPrice)}): </span>
+              <span className="font-semibold text-gray-800">{formatLKR(itemTotal)}</span>
+              {totalDiscount > 0 && (
+                <span className="ml-2 text-green-600 font-medium">(- {formatLKR(totalDiscount)})</span>
+              )}
+            </div>
+            <div className="text-right">
+              <span className="text-xs font-bold text-gray-500 mr-2">Total:</span>
+              <span className="text-xl font-black text-primary-700">{formatLKR(finalTotal)}</span>
             </div>
           </div>
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex gap-3">
+        <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 flex gap-3 flex-shrink-0">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-3 px-4 border-2 border-gray-300 hover:border-gray-400 text-gray-700 font-bold rounded-xl transition-all hover:bg-gray-100"
+            className="flex-1 py-2.5 px-4 border border-gray-300 hover:border-gray-400 text-gray-700 text-sm font-bold rounded-xl transition-all hover:bg-gray-100"
           >
             Cancel (ESC)
           </button>
@@ -388,9 +386,9 @@ const ProductConfirmationModal = ({ product, isOpen, onClose, onConfirm, formatL
             type="button"
             onClick={handleConfirm}
             disabled={quantity > maxStock}
-            className="flex-1 py-3 px-4 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 py-2.5 px-4 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white text-sm font-bold rounded-xl transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            ✓ Add to Cart (Enter)
+            <FaCheck /> Add to Cart (Enter)
           </button>
         </div>
       </div>
@@ -506,23 +504,23 @@ const CustomItemConfirmationModal = ({ isOpen, onClose, onConfirm, initialName }
       aria-modal="true"
     >
       <div 
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg border border-gray-200 overflow-hidden animate-in fade-in zoom-in duration-200 outline-none"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl border border-gray-200 overflow-hidden animate-in fade-in zoom-in duration-200 outline-none"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white text-xl">
-              ➕
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white text-lg">
+              <FaPlus />
             </div>
             <div>
               <h3 className="text-lg font-bold text-white">Add Custom Item</h3>
-              <p className="text-xs text-white/80">⌨️ Enter to navigate fields, ESC to cancel</p>
+              <p className="text-xs text-white/80">Press Enter to navigate fields, ESC to cancel</p>
             </div>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors">
-            ✕
+            <FaTimes />
           </button>
         </div>
 
@@ -935,12 +933,12 @@ const CreditCustomerModal = ({ isOpen, onClose, onConfirm, customers, formatLKR 
         {/* Modal Header */}
         <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white text-xl">
-              📝
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white text-lg">
+              <FaUser />
             </div>
             <div>
               <h3 id="credit-modal-title" className="text-lg font-bold text-white">Credit Billing</h3>
-              <p className="text-xs text-white/80">⌨️ Ctrl+Alt+E=Existing, Ctrl+Alt+N=New • Enter to navigate • ESC to cancel</p>
+              <p className="text-xs text-white/80">Ctrl+Alt+E=Existing, Ctrl+Alt+N=New • Enter to navigate • ESC to cancel</p>
             </div>
           </div>
           <button 
@@ -1989,12 +1987,14 @@ const CashBilling = () => {
     <head>
       <title>Receipt - ${billData.billNumber}</title>
       <style>
-        @page { size: auto; margin: 4mm; }
+        @page { size: 80mm auto; margin: 4mm; }
+        * { box-sizing: border-box; }
         body { 
-          font-family: 'Courier New', monospace; 
+          font-family: 'Courier New', Courier, monospace; 
           font-size: 11px; 
+          line-height: 1.4;
           margin: 0; 
-          padding: 0; 
+          padding: 2mm; 
           background: #fff; 
           color: #000;
           -webkit-print-color-adjust: exact;
@@ -2004,7 +2004,6 @@ const CashBilling = () => {
           width: 100%;
           max-width: 80mm;
           margin: 0 auto;
-          box-sizing: border-box;
         }
         .header { 
           text-align: center; 
@@ -2013,24 +2012,26 @@ const CashBilling = () => {
           padding-bottom: 8px; 
         }
         .header h2 { 
-          margin: 0; 
-          font-size: 18px; 
+          margin: 0 0 4px 0; 
+          font-size: 16px; 
           font-weight: bold; 
           text-transform: uppercase;
+          letter-spacing: 1px;
         }
         .header .company-info {
           font-size: 10px;
-          margin: 4px 0;
-          line-height: 1.4;
+          margin: 2px 0;
+          line-height: 1.5;
         }
         .header .bill-type {
-          font-size: 12px;
+          font-size: 11px;
           font-weight: bold;
           margin-top: 4px;
+          text-transform: uppercase;
         }
         .date-time {
           text-align: right;
-          font-size: 10px;
+          font-size: 9px;
           margin-top: 4px;
         }
         .bill-info { 
@@ -2038,7 +2039,7 @@ const CashBilling = () => {
           justify-content: space-between; 
           margin-bottom: 6px; 
           font-size: 10px; 
-          border-bottom: 1px solid #ccc; 
+          border-bottom: 1px solid #000; 
           padding-bottom: 4px; 
         }
         table { 
@@ -2049,59 +2050,78 @@ const CashBilling = () => {
         th { 
           text-align: left; 
           border-bottom: 2px solid #000; 
-          padding: 4px 0; 
+          padding: 3px 2px; 
           font-size: 10px; 
           font-weight: bold; 
         }
         td { 
-          padding: 4px 0; 
+          padding: 3px 2px; 
           font-size: 10px; 
           vertical-align: top; 
+          color: #000;
+        }
+        .barcode-sub {
+          font-size: 8px;
+          color: #000;
+          opacity: 0.75;
         }
         .totals { 
           border-top: 2px dashed #000; 
           padding-top: 6px; 
-          margin-top: 6px; 
+          margin-top: 4px; 
         }
-        .totals div { 
+        .totals .row { 
           display: flex; 
           justify-content: space-between; 
-          margin: 3px 0; 
+          margin: 2px 0; 
           font-size: 11px; 
+        }
+        .totals .disc-row {
+          display: flex;
+          justify-content: space-between;
+          margin: 2px 0;
+          font-size: 11px;
         }
         .grand-total { 
           font-weight: bold; 
           font-size: 14px; 
           border-top: 2px solid #000; 
-          padding-top: 4px; 
-          margin-top: 4px; 
+          border-bottom: 2px solid #000;
+          padding: 4px 0; 
+          margin: 4px 0; 
+          display: flex;
+          justify-content: space-between;
         }
         .payment-info { 
           text-align: center; 
           margin: 8px 0; 
-          padding: 4px; 
-          background: #f0f0f0; 
+          padding: 5px 4px; 
           font-weight: bold; 
-          border: 1px solid #000;
+          border: 2px solid #000;
+          font-size: 11px;
+          letter-spacing: 0.5px;
         }
         .footer { 
           text-align: center; 
-          margin-top: 12px; 
+          margin-top: 10px; 
           font-size: 9px; 
           border-top: 2px dashed #000; 
           padding-top: 6px; 
+          line-height: 1.6;
         }
         .audit { 
           font-size: 8px; 
-          color: #333; 
+          color: #000;
           margin-top: 8px; 
           text-align: center; 
+          border-top: 1px dashed #000;
+          padding-top: 4px;
         }
         @media print { 
+          * { color: #000 !important; background: transparent !important; }
           body { 
             -webkit-print-color-adjust: exact; 
             print-color-adjust: exact;
-            print-adjust: exact;
           }
           .receipt-container {
             max-width: 100% !important;
@@ -2113,16 +2133,13 @@ const CashBilling = () => {
     <body>
       <div class="receipt-container">
         <div class="header">
-          <div style="text-align: center; margin-bottom: 6px;">
-            <img src="${window.location.origin}/Logo.jpg" alt="Samagi Motors" style="max-height: 50px; width: auto; object-fit: contain; filter: grayscale(100%);" />
-          </div>
           <h2>SAMAGI MOTORS</h2>
           <div class="company-info">
             <div>TP: 077 779 7410</div>
             <div>Madagalle Road, Kubukgate</div>
             <div>(Kurunegala)</div>
           </div>
-          <div class="bill-type">POS SYSTEM - ${paymentMethod} BILL</div>
+          <div class="bill-type">${paymentMethod} BILL</div>
           <div class="date-time">${new Date().toLocaleString('en-LK')}</div>
         </div>
         <div class="bill-info">
@@ -2132,7 +2149,7 @@ const CashBilling = () => {
         <table>
           <thead>
             <tr>
-              <th style="width:45%">Item</th>
+              <th style="width:42%">Item</th>
               <th style="text-align:center">Qty</th>
               <th style="text-align:right">Price</th>
               <th style="text-align:right">Disc</th>
@@ -2142,26 +2159,25 @@ const CashBilling = () => {
           <tbody>
             ${Array.isArray(cartItems) ? cartItems.map(item => `
               <tr>
-                <td>${item.product_name}<br><span style="font-size:9px;color:#333">${item.barcode}</span></td>
+                <td>${item.product_name}<br><span class="barcode-sub">${item.barcode || ''}</span></td>
                 <td style="text-align:center">${item.quantity}</td>
                 <td style="text-align:right">${(item.unit_price || 0).toFixed(2)}</td>
-                <td style="text-align:right;color:#c00">${(item.discount_lkr || 0) > 0 ? '-' + ((item.discount_lkr * item.quantity) || 0).toFixed(2) : '-'}</td>
+                <td style="text-align:right">${(item.discount_lkr || 0) > 0 ? '-' + ((item.discount_lkr * item.quantity) || 0).toFixed(2) : '-'}</td>
                 <td style="text-align:right;font-weight:bold">${(((item.unit_price || 0) * (item.quantity || 1)) - ((item.discount_lkr || 0) * (item.quantity || 1))).toFixed(2)}</td>
               </tr>
             `).join('') : ''}
           </tbody>
         </table>
         <div class="totals">
-          <div><span>Subtotal:</span><span>LKR ${totalAmount.toFixed(2)}</span></div>
-          <div style="color:#c00"><span>Discount:</span><span>- LKR ${totalDiscount.toFixed(2)}</span></div>
+          <div class="row"><span>Subtotal:</span><span>LKR ${totalAmount.toFixed(2)}</span></div>
+          <div class="disc-row"><span>Discount:</span><span>- LKR ${totalDiscount.toFixed(2)}</span></div>
           <div class="grand-total"><span>TOTAL:</span><span>LKR ${grandTotal.toFixed(2)}</span></div>
           <div class="payment-info">PAYMENT: ${paymentMethod}</div>
         </div>
         <div class="footer">
           <p>Thank you for shopping with us!</p>
           <p>Goods once sold cannot be returned</p>
-          <p>TP: 077 779 7410 | Madagalle Road, Kubukgate, Kurunegala</p>
-          <p style="margin-top: 10px; border-top: 1px dashed #555; padding-top: 6px; font-size: 8px; color: #555; text-transform: lowercase;">developed with precision by nexasoft<br>0787979131 / nexasoft.site</p>
+          <p>TP: 077 779 7410 | Madagalle Road, Kubukgate</p>
         </div>
         <div class="audit">
           Audit: ${billData.billNumber} | ${new Date().toISOString()} | Cashier: ${billData.cashier}
@@ -2186,12 +2202,14 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
     <head>
       <title>Credit Bill - ${billData.billNumber}</title>
       <style>
-        @page { size: auto; margin: 4mm; }
+        @page { size: 80mm auto; margin: 4mm; }
+        * { box-sizing: border-box; }
         body { 
-          font-family: 'Courier New', monospace; 
-          font-size: 10px; 
+          font-family: 'Courier New', Courier, monospace; 
+          font-size: 11px;
+          line-height: 1.4;
           margin: 0; 
-          padding: 0; 
+          padding: 2mm; 
           background: #fff; 
           color: #000;
           -webkit-print-color-adjust: exact;
@@ -2201,7 +2219,6 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
           width: 100%;
           max-width: 80mm;
           margin: 0 auto;
-          box-sizing: border-box;
         }
         .header { 
           text-align: center; 
@@ -2210,30 +2227,31 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
           padding-bottom: 8px; 
         }
         .header h2 { 
-          margin: 0; 
-          font-size: 18px; 
+          margin: 0 0 4px 0; 
+          font-size: 16px; 
           font-weight: bold; 
           text-transform: uppercase;
+          letter-spacing: 1px;
         }
         .header .company-info {
           font-size: 10px;
-          margin: 4px 0;
-          line-height: 1.4;
+          margin: 2px 0;
+          line-height: 1.5;
         }
         .header .bill-type {
-          font-size: 12px;
+          font-size: 11px;
           font-weight: bold;
           margin-top: 4px;
         }
         .date-time {
           text-align: right;
-          font-size: 10px;
+          font-size: 9px;
           margin-top: 4px;
         }
         .customer-info { 
           margin-bottom: 8px; 
-          font-size: 9px; 
-          border-bottom: 1px solid #ccc; 
+          font-size: 10px; 
+          border-bottom: 1px solid #000; 
           padding-bottom: 6px; 
         }
         .customer-info div { 
@@ -2247,63 +2265,68 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
         th { 
           text-align: left; 
           border-bottom: 2px solid #000; 
-          padding: 4px 0; 
-          font-size: 9px; 
+          padding: 3px 2px; 
+          font-size: 10px; 
           font-weight: bold; 
         }
         td { 
-          padding: 4px 0; 
-          font-size: 9px; 
+          padding: 3px 2px; 
+          font-size: 10px;
+          color: #000;
+        }
+        .barcode-sub {
+          font-size: 8px;
+          color: #000;
+          opacity: 0.75;
         }
         .totals { 
           border-top: 2px dashed #000; 
           padding-top: 6px; 
-          margin-top: 6px; 
+          margin-top: 4px; 
         }
-        .totals div { 
+        .totals .row { 
           display: flex; 
           justify-content: space-between; 
-          margin: 3px 0; 
-          font-size: 10px; 
+          margin: 2px 0; 
+          font-size: 11px; 
         }
         .grand-total { 
           font-weight: bold; 
-          font-size: 13px; 
+          font-size: 14px; 
           border-top: 2px solid #000; 
-          padding-top: 4px; 
-          margin-top: 4px; 
+          border-bottom: 2px solid #000;
+          padding: 4px 0; 
+          margin: 4px 0;
+          display: flex;
+          justify-content: space-between;
         }
         .outstanding { 
-          background: #7c3aed; 
-          color: #fff; 
+          border: 2px solid #000;
           padding: 6px; 
           margin-top: 6px; 
           text-align: center; 
           font-weight: bold; 
           font-size: 12px;
+        }
+        .credit-label {
+          font-weight: bold;
+          font-size: 10px;
           border: 1px solid #000;
+          padding: 1px 6px;
         }
         .footer { 
           text-align: center; 
-          margin-top: 12px; 
-          font-size: 8px; 
-          border-top: 2px dashed #000; 
-          padding-top: 6px; 
-        }
-        .credit-badge { 
-          background: #7c3aed; 
-          color: #fff; 
-          padding: 2px 8px; 
-          font-weight: bold; 
+          margin-top: 10px; 
           font-size: 9px; 
-          border-radius: 3px;
-          border: 1px solid #000;
+          border-top: 2px dashed #000; 
+          padding-top: 6px;
+          line-height: 1.6;
         }
         @media print { 
+          * { color: #000 !important; background: transparent !important; }
           body { 
             -webkit-print-color-adjust: exact; 
             print-color-adjust: exact;
-            print-adjust: exact;
           }
           .receipt-container {
             max-width: 100% !important;
@@ -2315,16 +2338,13 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
     <body>
       <div class="receipt-container">
         <div class="header">
-          <div style="text-align: center; margin-bottom: 6px;">
-            <img src="${window.location.origin}/Logo.jpg" alt="Samagi Motors" style="max-height: 50px; width: auto; object-fit: contain; filter: grayscale(100%);" />
-          </div>
           <h2>SAMAGI MOTORS</h2>
           <div class="company-info">
             <div>TP: 077 779 7410</div>
             <div>Madagalle Road, Kubukgate</div>
             <div>(Kurunegala)</div>
           </div>
-          <div class="bill-type">POS SYSTEM - <span class="credit-badge">CREDIT BILL</span></div>
+          <div class="bill-type">[ <span class="credit-label">CREDIT BILL</span> ]</div>
           <div class="date-time">${new Date().toLocaleString('en-LK')}</div>
         </div>
         <div class="customer-info">
@@ -2333,7 +2353,7 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
           <div><strong>Mobile:</strong> ${customer?.mobile || 'N/A'}</div>
           <div><strong>Address:</strong> ${customer?.address || 'N/A'}${customer?.city ? `, ${customer.city}` : ''}</div>
           <div><strong>Due Date:</strong> ${billData.due_date ? new Date(billData.due_date).toLocaleDateString('en-LK') : 'N/A'}</div>
-          ${safeOutstanding > 0 ? `<div><strong>Previous Outstanding:</strong> LKR ${safeOutstanding.toFixed(2)}</div>` : ''}
+          ${safeOutstanding > 0 ? `<div><strong>Prev. Outstanding:</strong> LKR ${safeOutstanding.toFixed(2)}</div>` : ''}
         </div>
         <table>
           <thead>
@@ -2348,18 +2368,18 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
           <tbody>
             ${Array.isArray(cartItems) ? cartItems.map(item => `
               <tr>
-                <td>${item.product_name || 'N/A'}<br><span style="font-size:8px;color:#333">${item.barcode || ''}</span></td>
+                <td>${item.product_name || 'N/A'}<br><span class="barcode-sub">${item.barcode || ''}</span></td>
                 <td style="text-align:center">${item.quantity || 1}</td>
                 <td style="text-align:right">${(item.unit_price || 0).toFixed(2)}</td>
-                <td style="text-align:right;color:#c00">${(item.discount_lkr || 0) > 0 ? '-' + ((item.discount_lkr * item.quantity) || 0).toFixed(2) : '-'}</td>
+                <td style="text-align:right">${(item.discount_lkr || 0) > 0 ? '-' + ((item.discount_lkr * item.quantity) || 0).toFixed(2) : '-'}</td>
                 <td style="text-align:right;font-weight:bold">${(((item.unit_price || 0) * (item.quantity || 1)) - ((item.discount_lkr || 0) * (item.quantity || 1))).toFixed(2)}</td>
               </tr>
             `).join('') : ''}
           </tbody>
         </table>
         <div class="totals">
-          <div><span>Subtotal:</span><span>LKR ${totalAmount.toFixed(2)}</span></div>
-          <div style="color:#c00"><span>Discount:</span><span>- LKR ${totalDiscount.toFixed(2)}</span></div>
+          <div class="row"><span>Subtotal:</span><span>LKR ${totalAmount.toFixed(2)}</span></div>
+          <div class="row"><span>Discount:</span><span>- LKR ${totalDiscount.toFixed(2)}</span></div>
           <div class="grand-total"><span>TOTAL:</span><span>LKR ${grandTotal.toFixed(2)}</span></div>
         </div>
         <div class="outstanding">
@@ -2369,13 +2389,6 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
           <p>Thank you for your business!</p>
           <p>Please settle the bill by the due date</p>
           <p>Cashier: ${billData.cashier || 'N/A'}</p>
-          <p>TP: 077 779 7410 | Madagalle Road, Kubukgate, Kurunegala</p>
-          <p style="margin-top: 10px; border-top: 1px dashed #555; padding-top: 6px; font-size: 8px; color: #555; text-transform: lowercase;">developed with precision by nexasoft<br>0787979131 / nexasoft.site</p>
-        </div>
-      </div>
-      <script>
-        window.onload = () => { setTimeout(() => window.print(), 300); };
-      <\/script>
     </body>
     </html>
   `);
@@ -2409,7 +2422,7 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
     
     try {
       const billItems = cart.map(item => ({
-        product_id: item.is_custom ? 999999 : item.product_id,
+        product_id: item.is_custom ? null : item.product_id,
         is_custom: item.is_custom || false,
         product_name: item.product_name,
         barcode: item.barcode || 'CUSTOM',
@@ -2510,12 +2523,12 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
         <header className="bg-white shadow-sm border-b px-6 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white text-xl shadow-lg">
-                💰
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white text-lg shadow-lg">
+                <FaMoneyBillWave />
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Cash Billing</h1>
-                <p className="text-sm text-gray-500">⌨️ Ctrl+1/2/3 for payment • Ctrl+Alt+E/N for credit</p>
+                <p className="text-sm text-gray-500">Ctrl+1/2/3 for payment • Ctrl+Alt+E/N for credit</p>
               </div>
             </div>
             
@@ -2559,8 +2572,8 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
                     <div className="w-12 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-gray-700 group-hover:text-primary-700 transition-colors">
-                      📷 Barcode Scanner Mode
+                    <span className="text-sm font-semibold text-gray-700 group-hover:text-primary-700 transition-colors flex items-center gap-1.5">
+                      <FaBarcode className="text-primary-600" /> Barcode Scanner Mode
                     </span>
                     <span className="text-xs text-gray-500">
                       {barcodeScannerMode ? 'Auto-add on scan • Manual typing disabled' : 'Type to search products'}
@@ -2620,6 +2633,20 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
                       Search
                     </button>
                   )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCustomModal(true);
+                      setShowSuggestions(false);
+                    }}
+                    className="px-5 py-4 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition-all shadow-md hover:shadow-lg flex items-center gap-2 whitespace-nowrap"
+                    title="Add Custom Item (Alt+C)"
+                  >
+                    <FaPlus className="w-4 h-4" />
+                    <span>Add Custom Item</span>
+                    <kbd className="hidden lg:inline-block px-1.5 py-0.5 bg-amber-600 text-white text-xs rounded font-mono font-semibold">Alt+C</kbd>
+                  </button>
                 </div>
               </form>
               
@@ -2631,6 +2658,10 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
                 <span className="flex items-center gap-1">
                   <kbd className="px-2 py-0.5 bg-gray-100 rounded border font-mono">Enter</kbd>
                   Select
+                </span>
+                <span className="flex items-center gap-1">
+                  <kbd className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded border border-amber-300 font-mono font-bold">Alt+C</kbd>
+                  Custom Item
                 </span>
                 <span className="flex items-center gap-1">
                   <kbd className="px-2 py-0.5 bg-gray-100 rounded border font-mono">ESC</kbd>
@@ -2686,7 +2717,7 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
                     className="w-full text-left px-5 py-4 bg-primary-50/50 hover:bg-primary-100 flex items-center justify-between transition-all font-semibold text-primary-700 border-t border-gray-100"
                   >
                     <span className="flex items-center gap-2">
-                      ➕ Add Custom Item: "{searchQuery}"
+                      <FaPlus /> Add Custom Item: "{searchQuery}"
                     </span>
                     <kbd className="px-2 py-0.5 bg-primary-200 text-primary-800 text-xs rounded font-mono font-bold">Alt+C</kbd>
                   </button>
@@ -2694,46 +2725,46 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
               )}
             </div>
             
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 flex-1 overflow-hidden flex flex-col">
-              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-gray-50 to-white">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white font-bold">
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden flex flex-col max-h-[420px]">
+              <div className="px-5 py-3 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-gray-50 to-white">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white font-bold text-sm">
                     {itemCount}
                   </div>
-                  <h3 className="font-bold text-gray-900 text-lg">Cart Items</h3>
+                  <h3 className="font-bold text-gray-900 text-base">Cart Items</h3>
                 </div>
                 <button 
                   onClick={clearCart} 
                   disabled={!Array.isArray(cart) || cart.length === 0}
-                  className="text-sm text-red-600 hover:text-red-700 hover:bg-red-50 px-4 py-2 rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                   Clear All (F4)
                 </button>
               </div>
               
-              <div className="flex-1 overflow-auto" ref={cartContainerRef}>
+              <div className="flex-1 overflow-y-auto max-h-[350px] min-h-[160px]" ref={cartContainerRef}>
                 {!Array.isArray(cart) || cart.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-80 text-gray-400">
-                    <div className="text-7xl mb-4 opacity-30">🛒</div>
-                    <p className="text-lg font-semibold text-gray-600">Cart is empty</p>
-                    <p className="text-sm mt-2 text-gray-500">
+                  <div className="flex flex-col items-center justify-center h-48 text-gray-400">
+                    <FaShoppingCart className="w-12 h-12 opacity-30 mb-2" />
+                    <p className="text-base font-semibold text-gray-600">Cart is empty</p>
+                    <p className="text-xs mt-1 text-gray-500">
                       {barcodeScannerMode ? 'Scan a barcode to add items' : 'Search products or scan barcode to add items'}
                     </p>
-                    <p className="text-xs text-gray-400 mt-4">💡 Tip: Press Ctrl+1/2/3 to select payment method</p>
+                    <p className="text-[11px] text-gray-400 mt-2">Tip: Press Ctrl+1/2/3 to select payment method</p>
                   </div>
                 ) : (
                   <table className="w-full">
                     <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Product</th>
-                        <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider w-24">Qty</th>
-                        <th className="px-4 py-3 text-right text-xs font-bold text-gray-600 uppercase tracking-wider w-32">Unit Price</th>
-                        <th className="px-4 py-3 text-right text-xs font-bold text-gray-600 uppercase tracking-wider w-40">Discount</th>
-                        <th className="px-4 py-3 text-right text-xs font-bold text-gray-600 uppercase tracking-wider w-32">Subtotal</th>
-                        <th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider w-20">Action</th>
+                        <th className="px-5 py-2.5 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Product</th>
+                        <th className="px-3 py-2.5 text-center text-xs font-bold text-gray-600 uppercase tracking-wider w-24">Qty</th>
+                        <th className="px-3 py-2.5 text-right text-xs font-bold text-gray-600 uppercase tracking-wider w-28">Unit Price</th>
+                        <th className="px-3 py-2.5 text-right text-xs font-bold text-gray-600 uppercase tracking-wider w-36">Discount</th>
+                        <th className="px-3 py-2.5 text-right text-xs font-bold text-gray-600 uppercase tracking-wider w-28">Subtotal</th>
+                        <th className="px-3 py-2.5 text-center text-xs font-bold text-gray-600 uppercase tracking-wider w-16">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -2751,58 +2782,56 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
                           onClick={() => setSelectedCartItemIndex(index)}
                           onMouseEnter={() => setSelectedCartItemIndex(index)}
                         >
-                          <td className="px-6 py-4">
-                            <div className="flex items-start gap-3">
-                              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center text-primary-700 font-bold text-lg flex-shrink-0 shadow-sm">
+                          <td className="px-5 py-2.5">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center text-primary-700 font-bold text-sm flex-shrink-0 shadow-sm">
                                 {(item?.product_name || '?').charAt(0).toUpperCase()}
                               </div>
                               <div>
-                                <p className="font-bold text-gray-900">{item?.product_name || 'N/A'}</p>
-                                <p className="text-xs text-gray-500 font-mono mt-0.5 bg-gray-100 inline-block px-1.5 rounded">{item?.barcode || ''}</p>
+                                <p className="font-bold text-gray-900 text-sm">{item?.product_name || 'N/A'}</p>
+                                <p className="text-[11px] text-gray-500 font-mono bg-gray-100 inline-block px-1 rounded">{item?.barcode || ''}</p>
                                 {item?.short_form && (
-                                  <div className="mt-1">
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
-                                      {item.short_form}
-                                    </span>
-                                  </div>
+                                  <span className="ml-1.5 inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-medium bg-gray-100 text-gray-700 border border-gray-200">
+                                    {item.short_form}
+                                  </span>
                                 )}
                                 {(item?.discount_lkr || 0) > 0 && (
-                                  <div className="mt-1.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-green-100 text-green-700 border border-green-200">
-                                    ✓ Auto Discount: {formatLKR(item.discount_lkr)}
+                                  <div className="mt-0.5 text-[10px] font-semibold text-green-700">
+                                    Auto: {formatLKR(item.discount_lkr)}
                                   </div>
                                 )}
                               </div>
                             </div>
                           </td>
                           
-                          <td className="px-4 py-4 text-center">
-                            <div className="flex flex-col items-center gap-1">
+                          <td className="px-3 py-2.5 text-center">
+                            <div className="flex flex-col items-center gap-0.5">
                               <input
                                 type="number"
                                 min="1"
                                 max={item?.max_stock || 999}
                                 value={item?.quantity || 1}
                                 onChange={(e) => updateCartItem(item?.product_id, 'quantity', e.target.value)}
-                                className="w-20 text-center border-2 border-gray-200 rounded-xl py-2 font-bold text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                                className="w-16 text-center border border-gray-300 rounded-lg py-1 font-bold text-sm text-gray-900 focus:ring-2 focus:ring-primary-500 outline-none"
                               />
                               <p className="text-[10px] text-gray-400">Max: {item?.max_stock || 0}</p>
                             </div>
                           </td>
                           
-                          <td className="px-4 py-4 text-right font-bold text-gray-900">
+                          <td className="px-3 py-2.5 text-right font-bold text-sm text-gray-900">
                             {formatLKR(item?.unit_price)}
                           </td>
                           
-                          <td className="px-4 py-4 text-right">
-                            <div className="flex flex-col items-end gap-2">
+                          <td className="px-3 py-2.5 text-right">
+                            <div className="flex flex-col items-end gap-1">
                               <select
                                 value={item?.discount_mode || 'default'}
                                 onChange={(e) => updateCartItem(item?.product_id, 'discount_mode', e.target.value)}
-                                className="w-full text-xs border-2 border-gray-200 rounded-lg py-2 px-2 bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-medium"
+                                className="w-full text-xs border border-gray-300 rounded-lg py-1 px-1 bg-white focus:ring-2 focus:ring-primary-500 font-medium"
                               >
-                                <option value="default">🤖 Default (Auto)</option>
-                                <option value="percent">📊 Manual %</option>
-                                <option value="fixed">💵 Manual LKR</option>
+                                <option value="default">Auto</option>
+                                <option value="percent">Manual %</option>
+                                <option value="fixed">Manual LKR</option>
                               </select>
                               
                               <div className="relative w-full">

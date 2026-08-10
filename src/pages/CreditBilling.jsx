@@ -5,6 +5,26 @@ import ProductService from '../services/product.service';
 import CustomerService from '../services/customer.service';
 import CreditBillService from '../services/creditBill.service';
 import { Toaster, toast } from 'react-hot-toast';
+import { 
+  FaPlus, 
+  FaTimes, 
+  FaCreditCard, 
+  FaBarcode, 
+  FaShoppingCart, 
+  FaUser, 
+  FaBuilding, 
+  FaSearch, 
+  FaExclamationTriangle,
+  FaCheck,
+  FaCheckCircle,
+  FaBoxOpen,
+  FaPercentage,
+  FaMoneyCheckAlt,
+  FaPhone,
+  FaCity,
+  FaEnvelope,
+  FaMapMarkerAlt
+} from 'react-icons/fa';
 
 // 🔊 Professional scan sound
 const playScanSound = () => {
@@ -137,72 +157,178 @@ const ProductConfirmationModal = ({ product, isOpen, onClose, onConfirm, formatL
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose} role="dialog" aria-modal="true">
-      <div ref={modalRef} className="bg-white rounded-2xl shadow-2xl w-full max-w-lg border border-gray-200 overflow-hidden animate-in fade-in zoom-in duration-200 outline-none" onClick={(e) => e.stopPropagation()} onKeyDown={handleKeyDown} tabIndex={-1}>
-        <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white text-xl">🛍️</div>
+      <div ref={modalRef} className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl border border-gray-200 overflow-hidden animate-in fade-in zoom-in duration-200 outline-none" onClick={(e) => e.stopPropagation()} onKeyDown={handleKeyDown} tabIndex={-1}>
+        <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-5 py-3 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white text-base"><FaBoxOpen /></div>
             <div>
-              <h3 className="text-lg font-bold text-white">Add to Cart</h3>
-              <p className="text-xs text-white/80">⌨️ ↑↓ adjust • Enter confirm</p>
+              <h3 className="text-base font-bold text-white">Add to Cart</h3>
+              <p className="text-[11px] text-white/80">Use ↑↓ to adjust, Enter to confirm</p>
             </div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center text-white" aria-label="Close">✕</button>
+          <button onClick={onClose} className="w-7 h-7 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center text-white" aria-label="Close"><FaTimes /></button>
         </div>
-        <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
-          <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
-            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center text-purple-700 font-bold text-2xl">{(product?.item_name || '?').charAt(0).toUpperCase()}</div>
+
+        {/* Modal Body */}
+        <div className="p-4 space-y-3 overflow-y-auto max-h-[75vh]">
+          {/* Product Info */}
+          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center text-purple-700 font-bold text-xl flex-shrink-0 shadow-sm">
+              {(product?.item_name || '?').charAt(0).toUpperCase()}
+            </div>
             <div className="flex-1 min-w-0">
-              <h4 className="font-bold text-gray-900 text-lg truncate">{product?.item_name || 'N/A'}</h4>
-              <p className="text-sm text-gray-500 font-mono mt-1 bg-gray-100 inline-block px-2 py-0.5 rounded">{product?.barcode || 'No barcode'}</p>
-              {product?.short_form && <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-purple-100 text-purple-700 border border-purple-200 mt-2">{product.short_form}</span>}
+              <h4 className="font-bold text-gray-900 text-base truncate">{product?.item_name || 'N/A'}</h4>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xs text-gray-500 font-mono bg-gray-100 px-1.5 py-0.5 rounded">
+                  {product?.barcode || 'No barcode'}
+                </span>
+                {product?.short_form && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-700 border border-purple-200">
+                    {product.short_form}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-black text-purple-700">{formatLKR(unitPrice)}</p>
-              <p className={`text-xs font-medium ${maxStock <= 10 ? 'text-red-600' : 'text-green-600'}`}>Stock: {maxStock}</p>
+              <p className="text-xl font-black text-purple-700">{formatLKR(unitPrice)}</p>
+              <p className={`text-[11px] font-medium ${maxStock <= 10 ? 'text-red-600' : 'text-green-600'}`}>
+                Stock: {maxStock}
+              </p>
             </div>
           </div>
-          {autoDiscount > 0 && discountMode === 'default' && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
-              <span className="text-green-600">✓</span>
-              <span className="text-sm font-medium text-green-700">Auto Discount: {formatLKR(autoDiscount)} ({product?.discount_value}{product?.discount_type === 'percent' ? '%' : ''})</span>
+
+          {/* 2-Column Grid for Quantity & Discount */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Quantity Selector */}
+            <div className={`p-3 rounded-xl border-2 transition-all ${focusedField === 'quantity' ? 'border-purple-500 bg-purple-50/30 ring-2 ring-purple-200' : 'border-gray-200 bg-gray-50'}`}>
+              <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
+                <span>Quantity</span>
+                {focusedField === 'quantity' && <span className="text-[10px] text-purple-600 font-normal">Active (↑↓)</span>}
+              </label>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleQuantityChange(quantity - 1)}
+                  className="w-9 h-9 rounded-lg border border-gray-300 hover:border-purple-500 hover:bg-purple-50 flex items-center justify-center text-lg font-bold text-gray-700 transition-colors disabled:opacity-50"
+                  disabled={quantity <= 1}
+                  aria-label="Decrease quantity"
+                >
+                  −
+                </button>
+                <input
+                  ref={qtyInputRef}
+                  type="number"
+                  min="1"
+                  max={maxStock}
+                  value={quantity}
+                  onChange={(e) => handleQuantityChange(e.target.value)}
+                  onFocus={() => setFocusedField('quantity')}
+                  className="flex-1 text-center text-lg font-bold border border-gray-300 rounded-lg py-1 focus:ring-2 focus:ring-purple-500 outline-none"
+                  aria-label="Quantity input"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleQuantityChange(quantity + 1)}
+                  className="w-9 h-9 rounded-lg border border-gray-300 hover:border-purple-500 hover:bg-purple-50 flex items-center justify-center text-lg font-bold text-gray-700 transition-colors disabled:opacity-50"
+                  disabled={quantity >= maxStock}
+                  aria-label="Increase quantity"
+                >
+                  +
+                </button>
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1">Max: {maxStock} • Press Enter →</p>
             </div>
-          )}
-          <div className={`p-4 rounded-xl border-2 transition-all ${focusedField === 'quantity' ? 'border-purple-500 bg-purple-50/30 ring-2 ring-purple-200' : 'border-gray-200 bg-gray-50'}`}>
-            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">Quantity {focusedField === 'quantity' && <span className="text-xs text-purple-600 font-normal">← ↑↓ adjust</span>}</label>
-            <div className="flex items-center gap-3">
-              <button type="button" onClick={() => handleQuantityChange(quantity - 1)} className="w-10 h-10 rounded-xl border-2 border-gray-200 hover:border-purple-500 hover:bg-purple-50 flex items-center justify-center text-xl font-bold text-gray-700 disabled:opacity-50" disabled={quantity <= 1}>−</button>
-              <input ref={qtyInputRef} type="number" min="1" max={maxStock} value={quantity} onChange={(e) => handleQuantityChange(e.target.value)} onFocus={() => setFocusedField('quantity')} className="flex-1 text-center text-xl font-bold border-2 border-gray-200 rounded-xl py-2 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none" aria-label="Quantity" />
-              <button type="button" onClick={() => handleQuantityChange(quantity + 1)} className="w-10 h-10 rounded-xl border-2 border-gray-200 hover:border-purple-500 hover:bg-purple-50 flex items-center justify-center text-xl font-bold text-gray-700 disabled:opacity-50" disabled={quantity >= maxStock}>+</button>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">Max: {maxStock} • Enter →</p>
-          </div>
-          <div className={`p-4 rounded-xl border-2 transition-all ${focusedField === 'discountMode' || focusedField === 'discountValue' ? 'border-purple-500 bg-purple-50/30 ring-2 ring-purple-200' : 'border-gray-200 bg-gray-50'}`}>
-            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">Discount {(focusedField === 'discountMode' || focusedField === 'discountValue') && <span className="text-xs text-purple-600 font-normal">← Active</span>}</label>
-            <div className="space-y-3">
-              <select value={discountMode} onChange={(e) => { setDiscountMode(e.target.value); if (e.target.value === 'default') handleConfirm(); else setFocusedField('discountValue'); }} onFocus={() => setFocusedField('discountMode')} className={`w-full border-2 rounded-xl py-2.5 px-4 bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-medium outline-none ${focusedField === 'discountMode' ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-200'}`} aria-label="Discount mode">
-                <option value="default">🤖 Auto ({product?.discount_value}{product?.discount_type === 'percent' ? '%' : ''})</option>
-                <option value="percent">📊 Manual %</option>
-                <option value="fixed">💵 Manual LKR</option>
-              </select>
-              {discountMode !== 'default' && (
-                <div className="relative">
-                  <input ref={discountInputRef} type="number" min="0" step={discountMode === 'percent' ? "1" : "0.01"} max={discountMode === 'percent' ? "100" : unitPrice} value={discountValue} onChange={(e) => handleDiscountValueChange(e.target.value)} onFocus={() => setFocusedField('discountValue')} className={`w-full text-right border-2 rounded-xl py-2.5 px-4 pr-12 font-medium focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none ${focusedField === 'discountValue' ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-200'}`} placeholder={discountMode === 'percent' ? 'Enter %' : 'Enter LKR'} aria-label="Discount value" />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400">{discountMode === 'percent' ? '%' : 'LKR'}</span>
-                </div>
+
+            {/* Discount Controls */}
+            <div className={`p-3 rounded-xl border-2 transition-all ${focusedField === 'discountMode' || focusedField === 'discountValue' ? 'border-purple-500 bg-purple-50/30 ring-2 ring-purple-200' : 'border-gray-200 bg-gray-50'}`}>
+              <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
+                <span>Discount</span>
+                {(focusedField === 'discountMode' || focusedField === 'discountValue') && <span className="text-[10px] text-purple-600 font-normal">Active</span>}
+              </label>
+              <div className="space-y-2">
+                <select
+                  value={discountMode}
+                  onChange={(e) => {
+                    setDiscountMode(e.target.value);
+                    if (e.target.value === 'default') {
+                      handleConfirm();
+                    } else {
+                      setFocusedField('discountValue');
+                    }
+                  }}
+                  onFocus={() => setFocusedField('discountMode')}
+                  className={`w-full text-xs border rounded-lg py-1.5 px-2 bg-white focus:ring-2 focus:ring-purple-500 font-medium outline-none ${
+                    focusedField === 'discountMode' ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-300'
+                  }`}
+                  aria-label="Discount mode selection"
+                >
+                  <option value="default">Auto ({product?.discount_value}{product?.discount_type === 'percent' ? '%' : ''})</option>
+                  <option value="percent">Manual %</option>
+                  <option value="fixed">Manual LKR</option>
+                </select>
+                
+                {discountMode !== 'default' && (
+                  <div className="relative">
+                    <input
+                      ref={discountInputRef}
+                      type="number"
+                      min="0"
+                      step={discountMode === 'percent' ? "1" : "0.01"}
+                      max={discountMode === 'percent' ? "100" : unitPrice}
+                      value={discountValue}
+                      onChange={(e) => handleDiscountValueChange(e.target.value)}
+                      onFocus={() => setFocusedField('discountValue')}
+                      className={`w-full text-right text-xs border rounded-lg py-1.5 px-2 pr-10 font-medium focus:ring-2 focus:ring-purple-500 outline-none ${
+                        focusedField === 'discountValue' ? 'border-purple-500 ring-2 ring-purple-200' : 'border-gray-300'
+                      }`}
+                      placeholder={discountMode === 'percent' ? 'Enter %' : 'Enter LKR'}
+                      aria-label="Discount value"
+                    />
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">
+                      {discountMode === 'percent' ? '%' : 'LKR'}
+                    </span>
+                  </div>
+                )}
+              </div>
+              {discountLKR > 0 && (
+                <p className="text-[10px] text-green-700 font-semibold mt-1">Per item: {formatLKR(discountLKR)}</p>
               )}
-              {discountLKR > 0 && <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg"><span className="text-sm font-medium text-green-700">Discount/item:</span><span className="font-bold text-green-700">{formatLKR(discountLKR)}</span></div>}
             </div>
-            <p className="text-xs text-gray-500 mt-2">{discountMode === 'default' ? '✓ Auto applied • Enter to add' : '↑↓ adjust • Enter confirm'}</p>
           </div>
-          <div className="p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200 space-y-2">
-            <div className="flex justify-between text-sm"><span className="text-gray-600">Subtotal ({quantity} × {formatLKR(unitPrice)})</span><span className="font-medium">{formatLKR(itemTotal)}</span></div>
-            {totalDiscount > 0 && <div className="flex justify-between text-sm text-green-600"><span>Discount ({quantity} × {formatLKR(discountLKR)})</span><span className="font-medium">− {formatLKR(totalDiscount)}</span></div>}
-            <div className="border-t border-gray-200 pt-2 flex justify-between"><span className="text-lg font-bold text-gray-900">Total</span><span className="text-2xl font-black text-purple-700">{formatLKR(finalTotal)}</span></div>
+
+          {/* Price Summary Bar */}
+          <div className="p-3 bg-gradient-to-r from-gray-50 to-purple-50/20 rounded-xl border border-gray-200 flex items-center justify-between">
+            <div className="text-xs">
+              <span className="text-gray-500 font-medium">Subtotal ({quantity} × {formatLKR(unitPrice)}): </span>
+              <span className="font-semibold text-gray-800">{formatLKR(itemTotal)}</span>
+              {totalDiscount > 0 && (
+                <span className="ml-2 text-green-600 font-medium">(- {formatLKR(totalDiscount)})</span>
+              )}
+            </div>
+            <div className="text-right">
+              <span className="text-xs font-bold text-gray-500 mr-2">Total:</span>
+              <span className="text-xl font-black text-purple-700">{formatLKR(finalTotal)}</span>
+            </div>
           </div>
         </div>
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex gap-3">
-          <button type="button" onClick={onClose} className="flex-1 py-3 px-4 border-2 border-gray-300 hover:border-gray-400 text-gray-700 font-bold rounded-xl hover:bg-gray-100">Cancel (ESC)</button>
-          <button type="button" onClick={handleConfirm} disabled={quantity > maxStock} className="flex-1 py-3 px-4 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-bold rounded-xl shadow-lg disabled:opacity-50">✓ Add (Enter)</button>
+
+        {/* Modal Footer */}
+        <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 flex gap-3 flex-shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2.5 px-4 border border-gray-300 hover:border-gray-400 text-gray-700 text-sm font-bold rounded-xl transition-all hover:bg-gray-100"
+          >
+            Cancel (ESC)
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={quantity > maxStock}
+            className="flex-1 py-2.5 px-4 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white text-sm font-bold rounded-xl transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <FaCheck /> Add to Cart (Enter)
+          </button>
         </div>
       </div>
     </div>
@@ -317,23 +443,23 @@ const CustomItemConfirmationModal = ({ isOpen, onClose, onConfirm, initialName }
       aria-modal="true"
     >
       <div 
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg border border-gray-200 overflow-hidden animate-in fade-in zoom-in duration-200 outline-none"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl border border-gray-200 overflow-hidden animate-in fade-in zoom-in duration-200 outline-none"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white text-xl">
-              ➕
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white text-lg">
+              <FaPlus />
             </div>
             <div>
               <h3 className="text-lg font-bold text-white">Add Custom Item</h3>
-              <p className="text-xs text-white/80">⌨️ Enter to navigate fields, ESC to cancel</p>
+              <p className="text-xs text-white/80">Press Enter to navigate fields, ESC to cancel</p>
             </div>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors">
-            ✕
+            <FaTimes />
           </button>
         </div>
 
@@ -786,7 +912,7 @@ const CreditBilling = () => {
     setProcessing(true);
     try {
       const items = cart.map(i => ({
-        product_id: i.is_custom ? 999999 : i.product_id,
+        product_id: i.is_custom ? null : i.product_id,
         is_custom: i.is_custom || false,
         product_name: i.product_name,
         barcode: i.barcode || 'CUSTOM',
@@ -806,7 +932,6 @@ const CreditBilling = () => {
     finally { setProcessing(false); }
   };
 
-  // 🖨️ Receipt print - ✅ FIXED WITH ALL REQUIREMENTS
   const openReceiptPrint = (bill, items, cust) => {
     const w = window.open('', '_blank', 'width=400,height=800');
     const out = cust?.outstanding_balance || 0;
@@ -817,23 +942,23 @@ const CreditBilling = () => {
       <head>
         <title>Credit Bill - ${bill.billNumber}</title>
         <style>
-          @page { size: auto; margin: 4mm; }
+          @page { size: 80mm auto; margin: 4mm; }
+          * { box-sizing: border-box; }
           body { 
-            font-family: 'Courier New', monospace; 
-            font-size: 10px; 
+            font-family: 'Courier New', Courier, monospace; 
+            font-size: 11px; 
+            line-height: 1.4;
             margin: 0; 
-            padding: 0; 
+            padding: 2mm; 
             background: #fff; 
             color: #000;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
-            print-adjust: exact;
           }
           .receipt-container {
             width: 100%;
             max-width: 80mm;
             margin: 0 auto;
-            box-sizing: border-box;
           }
           .header { 
             text-align: center; 
@@ -842,29 +967,36 @@ const CreditBilling = () => {
             padding-bottom: 8px; 
           }
           .header h2 { 
-            margin: 0; 
-            font-size: 18px; 
+            margin: 0 0 4px 0; 
+            font-size: 16px; 
             font-weight: bold; 
             text-transform: uppercase;
+            letter-spacing: 1px;
           }
           .header .company-info {
             font-size: 10px;
-            margin: 4px 0;
-            line-height: 1.4;
+            margin: 2px 0;
+            line-height: 1.5;
           }
           .header .bill-type {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: bold;
             margin-top: 4px;
           }
+          .credit-label {
+            font-weight: bold;
+            font-size: 10px;
+            border: 1px solid #000;
+            padding: 1px 6px;
+          }
           .date-time {
             text-align: right;
-            font-size: 10px;
+            font-size: 9px;
             margin-top: 4px;
           }
           .customer-info { 
             margin-bottom: 8px; 
-            font-size: 9px; 
+            font-size: 10px; 
             border-bottom: 1px solid #000; 
             padding-bottom: 6px; 
           }
@@ -879,63 +1011,62 @@ const CreditBilling = () => {
           th { 
             text-align: left; 
             border-bottom: 2px solid #000; 
-            padding: 4px 0; 
-            font-size: 9px; 
+            padding: 3px 2px; 
+            font-size: 10px; 
             font-weight: bold; 
           }
           td { 
-            padding: 4px 0; 
-            font-size: 9px; 
+            padding: 3px 2px; 
+            font-size: 10px;
+            color: #000;
+          }
+          .barcode-sub {
+            font-size: 8px;
+            color: #000;
+            opacity: 0.75;
           }
           .totals { 
             border-top: 2px dashed #000; 
             padding-top: 6px; 
-            margin-top: 6px; 
+            margin-top: 4px; 
           }
-          .totals div { 
+          .totals .row { 
             display: flex; 
             justify-content: space-between; 
-            margin: 3px 0; 
-            font-size: 10px; 
+            margin: 2px 0; 
+            font-size: 11px; 
           }
           .grand-total { 
             font-weight: bold; 
-            font-size: 13px; 
+            font-size: 14px; 
             border-top: 2px solid #000; 
-            padding-top: 4px; 
-            margin-top: 4px; 
+            border-bottom: 2px solid #000;
+            padding: 4px 0; 
+            margin: 4px 0;
+            display: flex;
+            justify-content: space-between;
           }
           .outstanding { 
-            background: #7c3aed; 
-            color: #fff; 
+            border: 2px solid #000;
             padding: 6px; 
             margin-top: 6px; 
             text-align: center; 
             font-weight: bold; 
             font-size: 12px;
-            border: 1px solid #000;
           }
           .footer { 
             text-align: center; 
-            margin-top: 12px; 
-            font-size: 8px; 
-            border-top: 2px dashed #000; 
-            padding-top: 6px; 
-          }
-          .credit-badge { 
-            background: #7c3aed; 
-            color: #fff; 
-            padding: 2px 8px; 
-            font-weight: bold; 
+            margin-top: 10px; 
             font-size: 9px; 
-            border-radius: 3px;
-            border: 1px solid #000;
+            border-top: 2px dashed #000; 
+            padding-top: 6px;
+            line-height: 1.6;
           }
           @media print { 
+            * { color: #000 !important; background: transparent !important; }
             body { 
               -webkit-print-color-adjust: exact; 
               print-color-adjust: exact;
-              print-adjust: exact;
             }
             .receipt-container {
               max-width: 100% !important;
@@ -947,16 +1078,13 @@ const CreditBilling = () => {
       <body>
         <div class="receipt-container">
           <div class="header">
-            <div style="text-align: center; margin-bottom: 6px;">
-              <img src="${window.location.origin}/Logo.jpg" alt="Samagi Motors" style="max-height: 50px; width: auto; object-fit: contain; filter: grayscale(100%);" />
-            </div>
             <h2>SAMAGI MOTORS</h2>
             <div class="company-info">
               <div>TP: 077 779 7410</div>
               <div>Madagalle Road, Kubukgate</div>
               <div>(Kurunegala)</div>
             </div>
-            <div class="bill-type">SAMAGI MOTORS - <span class="credit-badge">CREDIT BILL</span></div>
+            <div class="bill-type">[ <span class="credit-label">CREDIT BILL</span> ]</div>
             <div class="date-time">${new Date().toLocaleString('en-LK')}</div>
           </div>
           <div class="customer-info">
@@ -965,7 +1093,7 @@ const CreditBilling = () => {
             <div><strong>Mobile:</strong> ${cust?.mobile || 'N/A'}</div>
             <div><strong>Address:</strong> ${cust?.address || 'N/A'}${cust?.city ? `, ${cust.city}` : ''}</div>
             <div><strong>Due Date:</strong> ${bill.due_date ? new Date(bill.due_date).toLocaleDateString('en-LK') : 'N/A'}</div>
-            ${out > 0 ? `<div><strong>Previous Outstanding:</strong> LKR ${out.toFixed(2)}</div>` : ''}
+            ${out > 0 ? `<div><strong>Prev. Outstanding:</strong> LKR ${out.toFixed(2)}</div>` : ''}
           </div>
           <table>
             <thead>
@@ -980,18 +1108,18 @@ const CreditBilling = () => {
             <tbody>
               ${Array.isArray(items) ? items.map(it => `
                 <tr>
-                  <td>${it.product_name || 'N/A'}<br><span style="font-size:8px;color:#333">${it.barcode || ''}</span></td>
+                  <td>${it.product_name || 'N/A'}<br><span class="barcode-sub">${it.barcode || ''}</span></td>
                   <td style="text-align:center">${it.quantity || 1}</td>
                   <td style="text-align:right">${(it.unit_price || 0).toFixed(2)}</td>
-                  <td style="text-align:right;color:#c00">${(it.discount_lkr || 0) > 0 ? '-' + ((it.discount_lkr * it.quantity) || 0).toFixed(2) : '-'}</td>
+                  <td style="text-align:right">${(it.discount_lkr || 0) > 0 ? '-' + ((it.discount_lkr * it.quantity) || 0).toFixed(2) : '-'}</td>
                   <td style="text-align:right;font-weight:bold">${(((it.unit_price || 0) * (it.quantity || 1)) - ((it.discount_lkr || 0) * (it.quantity || 1))).toFixed(2)}</td>
                 </tr>
               `).join('') : ''}
             </tbody>
           </table>
           <div class="totals">
-            <div><span>Subtotal:</span><span>LKR ${totalAmount.toFixed(2)}</span></div>
-            <div style="color:#c00"><span>Discount:</span><span>- LKR ${totalDiscount.toFixed(2)}</span></div>
+            <div class="row"><span>Subtotal:</span><span>LKR ${totalAmount.toFixed(2)}</span></div>
+            <div class="row"><span>Discount:</span><span>- LKR ${totalDiscount.toFixed(2)}</span></div>
             <div class="grand-total"><span>TOTAL:</span><span>LKR ${grandTotal.toFixed(2)}</span></div>
           </div>
           <div class="outstanding">
@@ -1001,8 +1129,7 @@ const CreditBilling = () => {
             <p>Thank you for your business!</p>
             <p>Please settle by due date</p>
             <p>Cashier: ${bill.cashier || 'N/A'}</p>
-            <p>TP: 077 779 7410 | Madagalle Road, Kubukgate, Kurunegala</p>
-            <p style="margin-top: 10px; border-top: 1px dashed #555; padding-top: 6px; font-size: 8px; color: #555; text-transform: lowercase;">developed with precision by nexasoft<br>0787979131 / nexasoft.site</p>
+            <p>TP: 077 779 7410 | Madagalle Road, Kubukgate</p>
           </div>
         </div>
         <script>
@@ -1039,10 +1166,10 @@ const CreditBilling = () => {
         <header className="bg-white shadow-sm border-b px-6 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center text-white text-xl shadow-lg">💳</div>
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center text-white text-lg shadow-lg"><FaCreditCard /></div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Credit Billing</h1>
-                <p className="text-sm text-gray-500">⌨️ Ctrl+Alt+E/N • ↑↓ navigate • Enter confirm</p>
+                <p className="text-sm text-gray-500">Ctrl+Alt+E/N • ↑↓ navigate • Enter confirm</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -1061,7 +1188,7 @@ const CreditBilling = () => {
             {/* Customer Panel */}
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2"><span className="text-2xl">👤</span> Customer <span className="text-xs text-gray-500 font-normal ml-2">Ctrl+Alt+E=Existing • Ctrl+Alt+N=New</span></h3>
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2"><FaUser className="text-purple-600" /> Customer <span className="text-xs text-gray-500 font-normal ml-2">Ctrl+Alt+E=Existing • Ctrl+Alt+N=New</span></h3>
                 {/* ✅ FIX 1: Toggle button for new customer form */}
                 {customerType === 'new' && selectedCustomer && newCustomerFormCollapsed && (
                   <button 
@@ -1112,7 +1239,7 @@ const CreditBilling = () => {
                     <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
                       <div className={`col-span-2 p-4 rounded-xl border-2 transition-all ${newCustomerFocusedField === 'customerType' ? 'border-green-500 bg-green-50/30 ring-2 ring-green-200' : 'border-gray-200 bg-gray-50'}`}>
                         <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">Customer Type {newCustomerFocusedField === 'customerType' && <span className="text-xs text-green-600 font-normal">← ↑↓ change • Enter next</span>}</label>
-                        <select ref={el => newCustomerRefs.current['customerType'] = el} value={newCustomer.customer_type} onChange={(e) => setNewCustomer({...newCustomer, customer_type: e.target.value})} onFocus={() => setNewCustomerFocusedField('customerType')} className={`w-full px-4 py-2.5 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all ${newCustomerFocusedField === 'customerType' ? 'border-green-500 ring-2 ring-green-200' : 'border-gray-200'}`} aria-label="Customer type"><option value="individual">👤 Individual</option><option value="company">🏢 Company</option></select>
+                        <select ref={el => newCustomerRefs.current['customerType'] = el} value={newCustomer.customer_type} onChange={(e) => setNewCustomer({...newCustomer, customer_type: e.target.value})} onFocus={() => setNewCustomerFocusedField('customerType')} className={`w-full px-4 py-2.5 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all ${newCustomerFocusedField === 'customerType' ? 'border-green-500 ring-2 ring-green-200' : 'border-gray-200'}`} aria-label="Customer type"><option value="individual">Individual</option><option value="company">Company</option></select>
                       </div>
                       {['name', 'mobile', 'email', 'address', 'city', 'nic_id'].map((field) => {
                         const isReq = ['name', 'mobile', 'address', 'city'].includes(field);
@@ -1137,14 +1264,17 @@ const CreditBilling = () => {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
-                            <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded-full">✓ Saved</span>
+                            <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded-full flex items-center gap-1">
+                              <FaCheckCircle className="w-3 h-3 text-green-600" />
+                              <span>Saved</span>
+                            </span>
                             <p className="font-bold text-green-900">{newCustomer.name || 'New Customer'}</p>
                           </div>
-                          <div className="grid grid-cols-2 gap-2 text-sm text-green-800">
-                            <p>📞 {newCustomer.mobile}</p>
-                            <p>🏙️ {newCustomer.city}</p>
-                            {newCustomer.company_name && <p className="col-span-2">🏢 {newCustomer.company_name}</p>}
-                            {newCustomer.email && <p className="col-span-2">✉️ {newCustomer.email}</p>}
+                          <div className="grid grid-cols-2 gap-2 text-xs text-green-800">
+                            <p className="flex items-center gap-1.5"><FaPhone className="w-3 h-3 text-green-600 shrink-0" /><span>{newCustomer.mobile}</span></p>
+                            <p className="flex items-center gap-1.5"><FaMapMarkerAlt className="w-3 h-3 text-green-600 shrink-0" /><span>{newCustomer.city}</span></p>
+                            {newCustomer.company_name && <p className="col-span-2 flex items-center gap-1.5"><FaBuilding className="w-3 h-3 text-green-600 shrink-0" /><span>{newCustomer.company_name}</span></p>}
+                            {newCustomer.email && <p className="col-span-2 flex items-center gap-1.5"><FaEnvelope className="w-3 h-3 text-green-600 shrink-0" /><span>{newCustomer.email}</span></p>}
                           </div>
                         </div>
                         <button 
@@ -1166,25 +1296,38 @@ const CreditBilling = () => {
               <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
                 <label className="flex items-center gap-3 cursor-pointer group">
                   <div className="relative"><input type="checkbox" checked={barcodeScannerMode} onChange={(e) => { setBarcodeScannerMode(e.target.checked); setSearchQuery(''); setShowSuggestions(false); setSelectedSuggestionIndex(-1); if (e.target.checked) { searchInputRef.current?.focus(); toast.success('📷 Scanner Mode'); }}} className="sr-only peer" /><div className="w-12 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div></div>
-                  <div className="flex flex-col"><span className="text-sm font-bold text-gray-700 group-hover:text-purple-700">📷 Barcode Scanner</span><span className="text-xs text-gray-500">{barcodeScannerMode ? 'Auto-add on scan' : 'Type to search'}</span></div>
+                  <div className="flex flex-col"><span className="text-sm font-bold text-gray-700 group-hover:text-purple-700 flex items-center gap-1.5"><FaBarcode className="text-purple-600" /> Barcode Scanner Mode</span><span className="text-xs text-gray-500">{barcodeScannerMode ? 'Auto-add on scan' : 'Type to search'}</span></div>
                 </label>
                 {barcodeScannerMode && <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg"><div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div><span className="text-xs font-bold text-green-700">Ready</span></div>}
               </div>
               <form onSubmit={handleSearchSubmit} className="relative">
                 <div className="flex items-center gap-3">
                   <div className="relative flex-1">
-                    <input ref={searchInputRef} type="text" value={searchQuery} onChange={handleSearchChange} placeholder={barcodeScannerMode ? "🔍 Scan now..." : "🔍 Search name/barcode/short form..."} readOnly={barcodeScannerMode} className={`w-full pl-12 pr-24 py-4 text-lg bg-gray-50 border-2 rounded-xl focus:outline-none transition-all ${barcodeScannerMode ? 'border-green-300 bg-green-50/30 cursor-not-allowed' : 'border-gray-200 focus:border-purple-500 focus:bg-white'}`} autoComplete="off" />
+                    <input ref={searchInputRef} type="text" value={searchQuery} onChange={handleSearchChange} placeholder={barcodeScannerMode ? "Scan barcode now..." : "Search name, barcode, or short form..."} readOnly={barcodeScannerMode} className={`w-full pl-12 pr-24 py-4 text-lg bg-gray-50 border-2 rounded-xl focus:outline-none transition-all ${barcodeScannerMode ? 'border-green-300 bg-green-50/30 cursor-not-allowed' : 'border-gray-200 focus:border-purple-500 focus:bg-white'}`} autoComplete="off" />
                     <div className="absolute left-4 top-1/2 -translate-y-1/2">{barcodeScannerMode ? <svg className="w-6 h-6 text-green-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg> : <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>}</div>
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2"><kbd className="hidden sm:inline-block px-2 py-1 bg-gray-200 rounded text-xs font-mono font-bold text-gray-600">ESC</kbd></div>
                   </div>
                   {!barcodeScannerMode && <button type="submit" disabled={!searchQuery.trim()} className="px-6 py-4 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all shadow-md">Add</button>}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCustomModal(true);
+                      setShowSuggestions(false);
+                    }}
+                    className="px-5 py-4 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition-all shadow-md hover:shadow-lg flex items-center gap-2 whitespace-nowrap"
+                    title="Add Custom Item (Alt+C)"
+                  >
+                    <FaPlus className="w-4 h-4" />
+                    <span>Add Custom Item</span>
+                    <kbd className="hidden lg:inline-block px-1.5 py-0.5 bg-amber-600 text-white text-xs rounded font-mono font-semibold">Alt+C</kbd>
+                  </button>
                 </div>
               </form>
               <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-500">
                 <span className="flex items-center gap-1"><kbd className="px-2 py-0.5 bg-gray-100 rounded border font-mono">↑↓</kbd> Navigate</span>
                 <span className="flex items-center gap-1"><kbd className="px-2 py-0.5 bg-gray-100 rounded border font-mono">Enter</kbd> Select</span>
+                <span className="flex items-center gap-1"><kbd className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded border border-amber-300 font-mono font-bold">Alt+C</kbd> Custom Item</span>
                 <span className="flex items-center gap-1"><kbd className="px-2 py-0.5 bg-gray-100 rounded border font-mono">ESC</kbd> Cancel</span>
-                <span className="flex items-center gap-1"><kbd className="px-2 py-0.5 bg-gray-100 rounded border font-mono">Ctrl+1/2/3</kbd> Payment</span>
               </div>
               {showSuggestions && searchQuery.trim().length >= 2 && (
                 <div className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
@@ -1207,31 +1350,31 @@ const CreditBilling = () => {
             </div>
             
             {/* Cart */}
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 flex-1 overflow-hidden flex flex-col">
-              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-gray-50 to-white">
-                <div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center text-white font-bold shadow-md">{itemCount}</div><h3 className="font-bold text-gray-900 text-lg">Cart Items</h3></div>
-                <button onClick={clearCart} disabled={!Array.isArray(cart) || cart.length === 0} className="text-sm text-red-600 hover:text-red-700 hover:bg-red-50 px-4 py-2 rounded-lg transition-all font-bold disabled:opacity-50 flex items-center gap-2"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>Clear (F4)</button>
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden flex flex-col max-h-[420px]">
+              <div className="px-5 py-3 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-gray-50 to-white">
+                <div className="flex items-center gap-2.5"><div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center text-white font-bold text-sm shadow-md">{itemCount}</div><h3 className="font-bold text-gray-900 text-base">Cart Items</h3></div>
+                <button onClick={clearCart} disabled={!Array.isArray(cart) || cart.length === 0} className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-all font-semibold disabled:opacity-50 flex items-center gap-1.5"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>Clear (F4)</button>
               </div>
-              <div className="flex-1 overflow-auto" ref={cartContainerRef}>
+              <div className="flex-1 overflow-y-auto max-h-[350px] min-h-[160px]" ref={cartContainerRef}>
                 {!Array.isArray(cart) || cart.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-80 text-gray-400">
-                    <div className="text-7xl mb-4 opacity-30">🛒</div>
-                    <p className="text-lg font-bold text-gray-600">Cart is empty</p>
-                    <p className="text-sm mt-2 text-gray-500">{barcodeScannerMode ? 'Scan to add' : 'Search or scan to add'}</p>
-                    <p className="text-xs text-gray-400 mt-4">💡 Ctrl+1/2/3 for payment</p>
+                  <div className="flex flex-col items-center justify-center h-48 text-gray-400">
+                    <FaShoppingCart className="w-12 h-12 opacity-30 mb-2 text-purple-400" />
+                    <p className="text-base font-bold text-gray-600">Cart is empty</p>
+                    <p className="text-xs mt-1 text-gray-500">{barcodeScannerMode ? 'Scan to add' : 'Search or scan to add'}</p>
+                    <p className="text-[11px] text-gray-400 mt-2">Ctrl+1/2/3 for payment</p>
                   </div>
                 ) : (
                   <table className="w-full">
                     <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
-                      <tr><th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Product</th><th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase w-24">Qty</th><th className="px-4 py-3 text-right text-xs font-bold text-gray-600 uppercase w-32">Price</th><th className="px-4 py-3 text-right text-xs font-bold text-gray-600 uppercase w-40">Discount</th><th className="px-4 py-3 text-right text-xs font-bold text-gray-600 uppercase w-32">Subtotal</th><th className="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase w-20">Action</th></tr>
+                      <tr><th className="px-5 py-2.5 text-left text-xs font-bold text-gray-600 uppercase">Product</th><th className="px-3 py-2.5 text-center text-xs font-bold text-gray-600 uppercase w-24">Qty</th><th className="px-3 py-2.5 text-right text-xs font-bold text-gray-600 uppercase w-28">Price</th><th className="px-3 py-2.5 text-right text-xs font-bold text-gray-600 uppercase w-36">Discount</th><th className="px-3 py-2.5 text-right text-xs font-bold text-gray-600 uppercase w-28">Subtotal</th><th className="px-3 py-2.5 text-center text-xs font-bold text-gray-600 uppercase w-16">Action</th></tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {cart.map((item, idx) => (<tr key={item?.product_id || idx} ref={el => cartItemRefs.current[idx] = el} className={`transition-all duration-200 cursor-pointer ${selectedCartItemIndex === idx ? 'bg-purple-100 ring-2 ring-purple-500 shadow-md' : highlightRow === item?.product_id ? 'bg-purple-50 ring-2 ring-purple-500/30' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'} hover:bg-purple-50/50`} onClick={() => setSelectedCartItemIndex(idx)} onMouseEnter={() => setSelectedCartItemIndex(idx)}><td className="px-6 py-4"><div className="flex items-start gap-3"><div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center text-purple-700 font-bold text-lg">{(item?.product_name || '?').charAt(0).toUpperCase()}</div><div><p className="font-bold text-gray-900">{item?.product_name || 'N/A'}</p><p className="text-xs text-gray-500 font-mono mt-0.5 bg-gray-100 inline-block px-1.5 rounded">{item?.barcode || ''}</p>{item?.short_form && <div className="mt-1"><span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">{item.short_form}</span></div>}{(item?.discount_lkr || 0) > 0 && <div className="mt-1.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-green-100 text-green-700 border border-green-200">✓ Auto: {formatLKR(item.discount_lkr)}</div>}</div></div></td><td className="px-4 py-4 text-center"><div className="flex flex-col items-center gap-1"><input type="number" min="1" max={item?.max_stock || 999} value={item?.quantity || 1} onChange={(e) => updateCartItem(item?.product_id, 'quantity', e.target.value)} className="w-20 text-center border-2 border-gray-200 rounded-xl py-2 font-bold text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" /><p className="text-[10px] text-gray-400">Max: {item?.max_stock || 0}</p></div></td><td className="px-4 py-4 text-right font-bold text-gray-900">{formatLKR(item?.unit_price)}</td><td className="px-4 py-4 text-right"><div className="flex flex-col items-end gap-2"><select value={item?.discount_mode || 'default'} onChange={(e) => updateCartItem(item?.product_id, 'discount_mode', e.target.value)} className="w-full text-xs border-2 border-gray-200 rounded-lg py-2 px-2 bg-white focus:ring-2 focus:ring-purple-500 font-medium"><option value="default">🤖 Auto</option><option value="percent">📊 %</option><option value="fixed">💵 LKR</option></select><div className="relative w-full"><input type="number" min="0" step={(item?.discount_mode === 'percent') ? "1" : "0.01"} max={(item?.discount_mode === 'percent') ? "100" : (item?.unit_price || 0)} value={item?.discount_value || 0} onChange={(e) => updateCartItem(item?.product_id, 'discount_value', e.target.value)} disabled={(item?.discount_mode || 'default') === 'default'} className={`w-full text-right border-2 rounded-lg py-2 font-medium pl-8 ${(item?.discount_mode || 'default') === 'default' ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'border-gray-300 focus:ring-2 focus:ring-purple-500'}`} placeholder={(item?.discount_mode === 'percent') ? '0%' : '0.00'} /><span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">{(item?.discount_mode === 'percent') ? '%' : 'Rs'}</span></div>{(item?.discount_lkr || 0) > 0 && <p className="text-[10px] text-green-600 font-bold">Saved: {formatLKR((item.discount_lkr || 0) * (item.quantity || 1))}</p>}</div></td><td className="px-4 py-4 text-right font-black text-purple-700 text-xl">{formatLKR(((item?.unit_price || 0) * (item?.quantity || 1)) - ((item?.discount_lkr || 0) * (item?.quantity || 1)))}</td><td className="px-4 py-4 text-center"><button onClick={() => item?.product_id && removeFromCart(item.product_id)} className="p-2.5 text-red-500 hover:bg-red-50 hover:text-red-700 rounded-xl transition-all" title="Remove (Backspace)"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></td></tr>))}
+                      {cart.map((item, idx) => (<tr key={item?.product_id || idx} ref={el => cartItemRefs.current[idx] = el} className={`transition-all duration-200 cursor-pointer ${selectedCartItemIndex === idx ? 'bg-purple-100 ring-2 ring-purple-500 shadow-md' : highlightRow === item?.product_id ? 'bg-purple-50 ring-2 ring-purple-500/30' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'} hover:bg-purple-50/50`} onClick={() => setSelectedCartItemIndex(idx)} onMouseEnter={() => setSelectedCartItemIndex(idx)}><td className="px-5 py-2.5"><div className="flex items-center gap-2.5"><div className="w-9 h-9 rounded-lg bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center text-purple-700 font-bold text-sm flex-shrink-0">{(item?.product_name || '?').charAt(0).toUpperCase()}</div><div><p className="font-bold text-gray-900 text-sm">{item?.product_name || 'N/A'}</p><p className="text-[11px] text-gray-500 font-mono bg-gray-100 inline-block px-1 rounded">{item?.barcode || ''}</p>{item?.short_form && <span className="ml-1.5 inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-medium bg-gray-100 text-gray-700 border border-gray-200">{item.short_form}</span>}{(item?.discount_lkr || 0) > 0 && <div className="mt-0.5 text-[10px] font-semibold text-green-700">Auto: {formatLKR(item.discount_lkr)}</div>}</div></div></td><td className="px-3 py-2.5 text-center"><div className="flex flex-col items-center gap-0.5"><input type="number" min="1" max={item?.max_stock || 999} value={item?.quantity || 1} onChange={(e) => updateCartItem(item?.product_id, 'quantity', e.target.value)} className="w-16 text-center border border-gray-300 rounded-lg py-1 font-bold text-sm text-gray-900 focus:ring-2 focus:ring-purple-500 outline-none" /><p className="text-[10px] text-gray-400">Max: {item?.max_stock || 0}</p></div></td><td className="px-3 py-2.5 text-right font-bold text-sm text-gray-900">{formatLKR(item?.unit_price)}</td><td className="px-3 py-2.5 text-right"><div className="flex flex-col items-end gap-1"><select value={item?.discount_mode || 'default'} onChange={(e) => updateCartItem(item?.product_id, 'discount_mode', e.target.value)} className="w-full text-xs border border-gray-300 rounded-lg py-1 px-1 bg-white focus:ring-2 focus:ring-purple-500 font-medium"><option value="default">Auto</option><option value="percent">Manual %</option><option value="fixed">Manual LKR</option></select><div className="relative w-full"><input type="number" min="0" step={(item?.discount_mode === 'percent') ? "1" : "0.01"} max={(item?.discount_mode === 'percent') ? "100" : (item?.unit_price || 0)} value={item?.discount_value || 0} onChange={(e) => updateCartItem(item?.product_id, 'discount_value', e.target.value)} disabled={(item?.discount_mode || 'default') === 'default'} className={`w-full text-right border rounded-lg py-1 font-medium pl-6 text-xs ${(item?.discount_mode || 'default') === 'default' ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'border-gray-300 focus:ring-2 focus:ring-purple-500'}`} placeholder={(item?.discount_mode === 'percent') ? '0%' : '0.00'} /><span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400">{(item?.discount_mode === 'percent') ? '%' : 'Rs'}</span></div>{(item?.discount_lkr || 0) > 0 && <p className="text-[10px] text-green-600 font-bold">Saved: {formatLKR((item.discount_lkr || 0) * (item.quantity || 1))}</p>}</div></td><td className="px-3 py-2.5 text-right font-bold text-purple-700 text-base">{formatLKR(((item?.unit_price || 0) * (item?.quantity || 1)) - ((item?.discount_lkr || 0) * (item?.quantity || 1)))}</td><td className="px-3 py-2.5 text-center"><button onClick={() => item?.product_id && removeFromCart(item.product_id)} className="p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700 rounded-lg transition-all" title="Remove (Backspace)"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></td></tr>))}
                     </tbody>
                   </table>
                 )}
               </div>
-              {cart.length > 0 && <div className="px-6 py-3 bg-gray-50 border-t border-gray-100 text-xs text-gray-500 flex items-center gap-4"><span>⌨️ <kbd className="px-1.5 py-0.5 bg-gray-200 rounded font-mono">↑↓</kbd> Navigate</span><span><kbd className="px-1.5 py-0.5 bg-gray-200 rounded font-mono">Backspace</kbd> Remove</span><span><kbd className="px-1.5 py-0.5 bg-gray-200 rounded font-mono">Ctrl+1/2/3</kbd> Payment</span></div>}
+              {cart.length > 0 && <div className="px-5 py-2.5 bg-gray-50 border-t border-gray-100 text-xs text-gray-500 flex items-center gap-4"><span><kbd className="px-1.5 py-0.5 bg-gray-200 rounded font-mono text-[10px]">↑↓</kbd> Navigate</span><span><kbd className="px-1.5 py-0.5 bg-gray-200 rounded font-mono text-[10px]">Backspace</kbd> Remove</span><span><kbd className="px-1.5 py-0.5 bg-gray-200 rounded font-mono text-[10px]">Ctrl+1/2/3</kbd> Payment</span></div>}
             </div>
           </div>
           

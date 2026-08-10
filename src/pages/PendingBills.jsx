@@ -4,6 +4,11 @@ import { Sidebar } from '../components/layout';
 import CreditBillService from '../services/creditBill.service';
 import CustomerService from '../services/customer.service';
 import { Toaster, toast } from 'react-hot-toast';
+import {
+  FaFolder, FaFolderOpen, FaPlus, FaSyncAlt, FaDollarSign,
+  FaCheckCircle, FaCheck, FaAdjust, FaClock, FaLightbulb, FaPrint,
+  FaPhone, FaMapMarkerAlt
+} from 'react-icons/fa';
 
 const PendingBills = () => {
   const { user } = useAuth();
@@ -221,15 +226,15 @@ const PendingBills = () => {
       if (response?.success) {
         const isFullyPaid = response.data?.payment_result?.newStatus === 'paid';
         toast.success(isFullyPaid 
-          ? `✅ Bill #${selectedBill.bill_number} marked as PAID!` 
-          : `✅ Payment of ${formatLKR(amount)} recorded`);
+          ? `Bill #${selectedBill.bill_number} marked as PAID!` 
+          : `Payment of ${formatLKR(amount)} recorded`);
         
         fetchPendingBills();
         setShowPaymentModal(false);
         
         if (isFullyPaid) {
           setTimeout(() => {
-            if (window.confirm('🖨️ Print payment receipt?')) {
+            if (window.confirm('Print payment receipt?')) {
               printPaymentReceipt(selectedBill, amount, paymentMethod);
             }
           }, 500);
@@ -355,9 +360,6 @@ const PendingBills = () => {
     <body>
       <div class="receipt-container">
         <div class="header">
-          <div style="text-align: center; margin-bottom: 6px;">
-            <img src="${window.location.origin}/Logo.jpg" alt="Samagi Motors" style="max-height: 50px; width: auto; object-fit: contain; filter: grayscale(100%);" />
-          </div>
           <h2>SAMAGI MOTORS</h2>
           <div class="company-info">
             <div>TP: 077 779 7410</div>
@@ -537,9 +539,6 @@ const PendingBills = () => {
     <body>
       <div class="receipt-container">
         <div class="header">
-          <div style="text-align: center; margin-bottom: 6px;">
-            <img src="${window.location.origin}/Logo.jpg" alt="Samagi Motors" style="max-height: 50px; width: auto; object-fit: contain; filter: grayscale(100%);" />
-          </div>
           <h2>SAMAGI MOTORS</h2>
           <div class="company-info">
             <div>TP: 077 779 7410</div>
@@ -619,7 +618,9 @@ const PendingBills = () => {
         <header className="bg-white shadow-sm border-b px-6 py-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white text-xl shadow-lg">📁</div>
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white text-xl shadow-lg">
+                <FaFolderOpen className="w-5 h-5 text-white" />
+              </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Pending Bills</h1>
                 <p className="text-sm text-gray-500">Manage unpaid credit bills by customer</p>
@@ -667,17 +668,19 @@ const PendingBills = () => {
         <div className="bg-white border-b px-6 py-4">
           <div className="flex flex-col lg:flex-row gap-4">
             {/* Search */}
-            <div className="flex-1 relative">
+            <div className="flex-1 relative flex items-center">
               <input
                 type="text"
                 value={filters.search}
                 onChange={(e) => setFilters({...filters, search: e.target.value})}
-                placeholder="🔍 Search customers or bills..."
-                className="input-pos pl-10"
+                placeholder="Search customers or bills..."
+                className="input-pos pl-10 h-10 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors w-full"
               />
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+              <div className="absolute left-3 flex items-center justify-center pointer-events-none">
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
             </div>
             
             {/* Status Filter */}
@@ -716,17 +719,19 @@ const PendingBills = () => {
             <div className="flex gap-2">
               <button
                 onClick={expandAll}
-                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-200 text-sm transition-colors"
+                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-200 text-sm transition-colors flex items-center gap-1.5"
                 title="Expand all customers"
               >
-                📂 Expand All
+                <FaFolderOpen className="text-amber-600 w-3.5 h-3.5" />
+                <span>Expand All</span>
               </button>
               <button
                 onClick={collapseAll}
-                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-200 text-sm transition-colors"
+                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-200 text-sm transition-colors flex items-center gap-1.5"
                 title="Collapse all customers"
               >
-                📁 Collapse All
+                <FaFolder className="text-amber-600 w-3.5 h-3.5" />
+                <span>Collapse All</span>
               </button>
             </div>
             
@@ -741,8 +746,10 @@ const PendingBills = () => {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                 </svg>
-              ) : '🔄'}
-              Refresh
+              ) : (
+                <FaSyncAlt className="w-3.5 h-3.5" />
+              )}
+              <span>Refresh</span>
             </button>
           </div>
         </div>
@@ -759,7 +766,7 @@ const PendingBills = () => {
             </div>
           ) : customerList.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-              <div className="text-6xl mb-4 opacity-30">📁</div>
+              <FaFolder className="text-5xl mb-3 opacity-30 text-amber-500" />
               <p className="text-lg font-semibold">No pending bills found</p>
               <p className="text-sm mt-1">All credit bills are paid or adjust filters</p>
             </div>
@@ -817,8 +824,19 @@ const PendingBills = () => {
                             {customer.name}
                             {customer.company_name && <span className="text-gray-500 font-normal"> ({customer.company_name})</span>}
                           </p>
-                          <p className="text-xs text-gray-500">
-                            📞 {customer.mobile} • 📍 {customer.city}
+                          <p className="text-xs text-gray-500 flex items-center gap-3">
+                            {customer.mobile && (
+                              <span className="inline-flex items-center gap-1">
+                                <FaPhone className="w-3 h-3 text-amber-600" />
+                                {customer.mobile}
+                              </span>
+                            )}
+                            {customer.city && (
+                              <span className="inline-flex items-center gap-1">
+                                <FaMapMarkerAlt className="w-3 h-3 text-amber-600" />
+                                {customer.city}
+                              </span>
+                            )}
                           </p>
                         </div>
                         
@@ -841,13 +859,12 @@ const PendingBills = () => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              // TODO: Navigate to credit billing with this customer
-                              toast.success(`🎯 Ready to bill ${customer.name}`);
+                              toast.success(`Ready to bill ${customer.name}`);
                             }}
                             className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
                             title="Create new credit bill"
                           >
-                            ➕
+                            <FaPlus className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
@@ -911,8 +928,23 @@ const PendingBills = () => {
                                     
                                     {/* Status Badge */}
                                     <div className="w-24 text-center">
-                                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border ${statusBadge}`}>
-                                        {bill.status === 'paid' ? '✓ Paid' : bill.status === 'partial' ? '◐ Partial' : '○ Pending'}
+                                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold border ${statusBadge}`}>
+                                        {bill.status === 'paid' ? (
+                                          <>
+                                            <FaCheckCircle className="w-3 h-3 text-green-600" />
+                                            <span>Paid</span>
+                                          </>
+                                        ) : bill.status === 'partial' ? (
+                                          <>
+                                            <FaAdjust className="w-3 h-3 text-amber-600" />
+                                            <span>Partial</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <FaClock className="w-3 h-3 text-blue-600" />
+                                            <span>Pending</span>
+                                          </>
+                                        )}
                                       </span>
                                     </div>
                                     
@@ -931,7 +963,7 @@ const PendingBills = () => {
                                         }`}
                                         title={bill.status === 'paid' ? 'Already paid' : 'Record payment'}
                                       >
-                                        💰
+                                        <FaDollarSign className="w-3.5 h-3.5" />
                                       </button>
                                     </div>
                                   </div>
@@ -949,107 +981,167 @@ const PendingBills = () => {
           )}
         </div>
         
-        {/* Payment Modal (unchanged - works on individual bills) */}
+        {/* Payment Modal */}
         {showPaymentModal && selectedBill && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowPaymentModal(false)}>
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
-              <div className="flex justify-between items-center mb-4 pb-4 border-b">
-                <h3 className="text-lg font-bold text-gray-900">Record Payment</h3>
-                <button onClick={() => setShowPaymentModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 sm:p-7 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              
+              {/* Header */}
+              <div className="flex justify-between items-center mb-5 pb-4 border-b">
+                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
+                    <FaDollarSign className="w-4 h-4" />
+                  </div>
+                  <span>Record Payment</span>
+                </h3>
+                <button 
+                  onClick={() => setShowPaymentModal(false)} 
+                  className="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 flex items-center justify-center text-xl transition-colors"
+                >
+                  &times;
+                </button>
               </div>
               
-              <div className="bg-gray-50 rounded-xl p-4 mb-4">
-                <p className="font-mono font-bold text-gray-900">#{selectedBill.bill_number || 'N/A'}</p>
-                <p className="text-sm text-gray-600">{selectedBill.customer_name || 'N/A'}{selectedBill.company_name ? ` (${selectedBill.company_name})` : ''}</p>
-                <div className="flex justify-between mt-2 text-sm">
-                  <span>Original Amount:</span>
-                  <span className="font-bold">{formatLKR(selectedBill.grand_total)}</span>
+              {/* Bill Details Summary Card */}
+              <div className="bg-gradient-to-r from-gray-50 to-amber-50/50 rounded-xl p-4 border border-amber-200/60 mb-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-200/60">
+                  <div>
+                    <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">Credit Bill</span>
+                    <p className="font-mono font-bold text-gray-900 text-base mt-1">#{selectedBill.bill_number || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">Customer</p>
+                    <p className="text-sm font-bold text-gray-900">{selectedBill.customer_name || 'N/A'}{selectedBill.company_name ? ` (${selectedBill.company_name})` : ''}</p>
+                  </div>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span>Previously Paid:</span>
-                  <span className="font-bold">{formatLKR(selectedBill.paid_amount || 0)}</span>
-                </div>
-                <div className="flex justify-between mt-2 pt-2 border-t font-bold">
-                  <span>Outstanding:</span>
-                  <span className={isOverdue(selectedBill) ? 'text-red-600' : 'text-amber-600'}>
-                    {formatLKR(selectedBill.outstanding_amount)}
-                  </span>
+                
+                <div className="grid grid-cols-3 gap-3 pt-3 text-center sm:text-left">
+                  <div>
+                    <span className="text-xs text-gray-500 block">Original Amount</span>
+                    <span className="font-bold text-gray-800 text-sm">{formatLKR(selectedBill.grand_total)}</span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500 block">Previously Paid</span>
+                    <span className="font-bold text-green-600 text-sm">{formatLKR(selectedBill.paid_amount || 0)}</span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500 block">Outstanding</span>
+                    <span className={`font-bold text-base ${isOverdue(selectedBill) ? 'text-red-600' : 'text-amber-600'}`}>
+                      {formatLKR(selectedBill.outstanding_amount)}
+                    </span>
+                  </div>
                 </div>
               </div>
               
+              {/* Form Controls - 2 Column Grid */}
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Payment Amount <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">LKR</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      max={selectedBill.outstanding_amount}
-                      value={paymentAmount}
-                      onChange={(e) => setPaymentAmount(e.target.value)}
-                      className="input-pos pl-14 font-bold text-lg"
-                      placeholder="0.00"
-                    />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  
+                  {/* Payment Amount */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                      Payment Amount <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">LKR</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        max={selectedBill.outstanding_amount}
+                        value={paymentAmount}
+                        onChange={(e) => setPaymentAmount(e.target.value)}
+                        className="input-pos pl-12 font-bold text-lg h-11 border-gray-300 focus:border-green-500 focus:ring-green-500"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    
+                    {/* Quick amount pills */}
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentAmount((selectedBill.outstanding_amount || 0).toFixed(2))}
+                        className="text-xs px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-800 font-semibold rounded-md transition-colors"
+                      >
+                        Pay Full Amount
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentAmount(((selectedBill.outstanding_amount || 0) * 0.5).toFixed(2))}
+                        className="text-xs px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-md transition-colors"
+                      >
+                        Pay 50%
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex gap-2 mt-2">
-                    <button
-                      type="button"
-                      onClick={() => setPaymentAmount((selectedBill.outstanding_amount || 0).toFixed(2))}
-                      className="text-xs px-3 py-1 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg transition-colors"
-                    >Pay Full Amount</button>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentAmount(((selectedBill.outstanding_amount || 0) * 0.5).toFixed(2))}
-                      className="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
-                    >Pay 50%</button>
+                  
+                  {/* Payment Method */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                      Payment Method <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={paymentMethod}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="input-pos h-11 text-sm border-gray-300 focus:border-green-500 focus:ring-green-500 font-medium"
+                    >
+                      <option value="CASH">Cash</option>
+                      <option value="CARD">Card</option>
+                      <option value="BANK_TRANSFER">Bank Transfer</option>
+                      <option value="CHEQUE">Cheque</option>
+                    </select>
                   </div>
                 </div>
                 
+                {/* Notes */}
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Payment Method</label>
-                  <select
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="input-pos"
-                  >
-                    <option value="CASH">💵 Cash</option>
-                    <option value="CARD">💳 Card</option>
-                    <option value="BANK_TRANSFER">🏦 Bank Transfer</option>
-                    <option value="CHEQUE">🧾 Cheque</option>
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Notes (Optional)</label>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                    Notes (Optional)
+                  </label>
                   <textarea
                     value={paymentNotes}
                     onChange={(e) => setPaymentNotes(e.target.value)}
-                    className="input-pos"
+                    className="input-pos text-sm border-gray-300 focus:border-green-500 focus:ring-green-500"
                     rows={2}
-                    placeholder="Payment reference, cheque number, etc."
+                    placeholder="Payment reference, cheque number, or details..."
                   />
                 </div>
               </div>
               
-              <div className="flex gap-3 mt-6 pt-4 border-t">
+              {/* Actions & Tip */}
+              <div className="flex flex-col sm:flex-row gap-3 mt-6 pt-5 border-t">
                 <button
                   onClick={handleProcessPayment}
                   disabled={processing === selectedBill?.id || !paymentAmount || parseFloat(paymentAmount) <= 0}
-                  className="flex-1 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold rounded-xl transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {processing === selectedBill?.id ? (
-                    <><svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>Processing...</>
-                  ) : '✅ Record Payment'}
+                    <>
+                      <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                      </svg>
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FaCheck className="w-4 h-4" />
+                      <span>Record Payment</span>
+                    </>
+                  )}
                 </button>
                 <button
                   onClick={() => setShowPaymentModal(false)}
                   className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors font-bold"
-                >Cancel</button>
+                >
+                  Cancel
+                </button>
               </div>
               
-              <p className="text-xs text-gray-500 mt-4 text-center">💡 Paying the full outstanding amount will mark this bill as <strong>PAID</strong></p>
+              <p className="text-xs text-gray-500 mt-4 text-center flex items-center justify-center gap-1.5">
+                <FaLightbulb className="text-amber-500 shrink-0" />
+                <span>Paying the full outstanding amount will mark this bill as <strong>PAID</strong></span>
+              </p>
             </div>
           </div>
         )}

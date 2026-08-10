@@ -6,6 +6,7 @@ import ProductForm from '../components/stock/ProductForm';
 import ProductTable from '../components/stock/ProductTable';
 import { Toaster, toast } from 'react-hot-toast';
 import JsBarcode from 'jsbarcode';
+import { FaPlus, FaEdit, FaExclamationTriangle } from 'react-icons/fa';
 
 const StockManagement = () => {
   const { isAdmin } = useAuth();
@@ -364,7 +365,7 @@ const StockManagement = () => {
                 className="btn-primary flex items-center gap-2 shrink-0 focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                 title="Add New Product (Ctrl+Alt+N)"
               >
-                <span>➕</span>
+                <FaPlus className="w-3.5 h-3.5" />
                 Add New Product
                 <kbd className="ml-1 text-xs opacity-60 bg-white/20 px-1.5 py-0.5 rounded">
                   Ctrl+Alt+N
@@ -394,10 +395,13 @@ const StockManagement = () => {
           {/* Low Stock Alert */}
           {products.some((p) => p.stock_quantity <= 10 && p.stock_quantity > 0) && (
             <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="text-sm text-amber-800">
-                ⚠️ <strong>Low Stock Alert:</strong>{' '}
-                {products.filter((p) => p.stock_quantity <= 10 && p.stock_quantity > 0).length} items
-                are running low. Consider restocking soon.
+              <p className="text-sm text-amber-800 flex items-center gap-2">
+                <FaExclamationTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>
+                  <strong>Low Stock Alert:</strong>{' '}
+                  {products.filter((p) => p.stock_quantity <= 10 && p.stock_quantity > 0).length} items
+                  are running low. Consider restocking soon.
+                </span>
               </p>
             </div>
           )}
@@ -412,7 +416,7 @@ const StockManagement = () => {
         >
           <div
             ref={modalRef}
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl border border-gray-200 overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in duration-200 outline-none"
             role="dialog"
             aria-modal="true"
             aria-label={editingProduct ? 'Edit Product' : 'Add New Product'}
@@ -420,8 +424,18 @@ const StockManagement = () => {
             {/* Modal Header */}
             <div className="flex justify-between items-center px-6 pt-5 pb-4 border-b border-gray-100 sticky top-0 bg-white rounded-t-2xl z-10">
               <div>
-                <h2 className="text-lg font-bold text-gray-900">
-                  {editingProduct ? '✏️ Edit Product' : '➕ Add New Product'}
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  {editingProduct ? (
+                    <>
+                      <FaEdit className="text-primary-600" />
+                      <span>Edit Product</span>
+                    </>
+                  ) : (
+                    <>
+                      <FaPlus className="text-primary-600" />
+                      <span>Add New Product</span>
+                    </>
+                  )}
                 </h2>
                 <p className="text-xs text-gray-400 mt-0.5">
                   {editingProduct
@@ -443,7 +457,7 @@ const StockManagement = () => {
             </div>
 
             {/* Modal Body */}
-            <div className="px-6 py-5">
+            <div className="px-6 py-4 overflow-y-auto max-h-[75vh]">
               <ProductForm
                 product={editingProduct}
                 onSubmit={handleSubmit}

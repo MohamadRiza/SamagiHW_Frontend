@@ -3,6 +3,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { Sidebar } from '../components/layout';
 import ChequeService from '../services/cheque.service';
 import { Toaster, toast } from 'react-hot-toast';
+import {
+  FaMoneyCheckAlt, FaPlus, FaEdit, FaTrash, FaEye, FaSyncAlt,
+  FaExclamationTriangle, FaCalendarAlt, FaArrowDown, FaArrowUp,
+  FaCheckCircle, FaTimesCircle, FaClock, FaBell, FaSave, FaCheck
+} from 'react-icons/fa';
 
 const Cheques = () => {
   const { user } = useAuth();
@@ -108,11 +113,10 @@ const Cheques = () => {
           const days = cheque.days_until_due;
           const type = cheque.type === 'incoming' ? 'receive' : 'pay';
           const message = days === 1 
-            ? `⚠️ Cheque #${cheque.cheque_number} due TOMORROW! ${type} LKR ${cheque.amount.toLocaleString()} from ${cheque.company_name}`
-            : `📅 Cheque #${cheque.cheque_number} due in 2 days. ${type} LKR ${cheque.amount.toLocaleString()} from ${cheque.company_name}`;
+            ? `Cheque #${cheque.cheque_number} due TOMORROW! ${type} LKR ${cheque.amount.toLocaleString()} from ${cheque.company_name}`
+            : `Cheque #${cheque.cheque_number} due in 2 days. ${type} LKR ${cheque.amount.toLocaleString()} from ${cheque.company_name}`;
           
           toast(message, {
-            icon: days === 1 ? '⚠️' : '📅',
             duration: 8000,
             style: {
               background: days === 1 ? '#fef3c7' : '#eff6ff',
@@ -270,12 +274,12 @@ const Cheques = () => {
       if (editingCheque) {
         response = await ChequeService.update(editingCheque.id, chequeData);
         if (response?.success) {
-          toast.success('✅ Cheque updated successfully');
+          toast.success('Cheque updated successfully');
         }
       } else {
         response = await ChequeService.create(chequeData);
         if (response?.success) {
-          toast.success('✅ Cheque added successfully');
+          toast.success('Cheque added successfully');
         }
       }
       
@@ -308,7 +312,7 @@ const Cheques = () => {
     try {
       const response = await ChequeService.delete(cheque.id);
       if (response?.success) {
-        toast.success('✅ Cheque deleted');
+        toast.success('Cheque deleted');
         fetchCheques();
       } else {
         toast.error(response?.error || 'Failed to delete cheque');
@@ -328,7 +332,7 @@ const Cheques = () => {
       });
       
       if (response?.success) {
-        toast.success(`✅ Status updated to ${newStatus}`);
+        toast.success(`Status updated to ${newStatus}`);
         fetchCheques();
       } else {
         toast.error(response?.error || 'Failed to update status');
@@ -367,9 +371,9 @@ const Cheques = () => {
   // Get status badge style
   const getStatusBadge = (status) => {
     const styles = {
-      pending: { label: '⏳ Pending', class: 'bg-amber-100 text-amber-700 border-amber-200' },
-      cleared: { label: '✅ Cleared', class: 'bg-green-100 text-green-700 border-green-200' },
-      bounced: { label: '❌ Bounced', class: 'bg-red-100 text-red-700 border-red-200' }
+      pending: { label: 'Pending', class: 'bg-amber-100 text-amber-700 border-amber-200' },
+      cleared: { label: 'Cleared', class: 'bg-green-100 text-green-700 border-green-200' },
+      bounced: { label: 'Bounced', class: 'bg-red-100 text-red-700 border-red-200' }
     };
     return styles[status] || styles.pending;
   };
@@ -377,8 +381,8 @@ const Cheques = () => {
   // Get type badge style
   const getTypeBadge = (type) => {
     return type === 'incoming' 
-      ? { label: '📥 Incoming', class: 'bg-blue-100 text-blue-700' }
-      : { label: '📤 Outgoing', class: 'bg-purple-100 text-purple-700' };
+      ? { label: 'Incoming', class: 'bg-blue-100 text-blue-700' }
+      : { label: 'Outgoing', class: 'bg-purple-100 text-purple-700' };
   };
 
   return (
@@ -400,10 +404,8 @@ const Cheques = () => {
                 onClick={openNewChequeForm}
                 className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors flex items-center gap-2 font-medium whitespace-nowrap"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Add Cheque
+                <FaPlus className="w-4 h-4" />
+                <span>Add Cheque</span>
               </button>
             </div>
           </div>
@@ -449,7 +451,7 @@ const Cheques = () => {
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1">
                 <label className="block text-xs font-medium text-gray-500 mb-1">Search</label>
-                <div className="relative">
+                <div className="relative flex items-center">
                   <input
                     type="text"
                     value={filters.search}
@@ -457,9 +459,11 @@ const Cheques = () => {
                     placeholder="Search by cheque # or notes..."
                     className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   />
-                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
+                  <div className="absolute left-3 flex items-center justify-center pointer-events-none text-gray-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
                 </div>
               </div>
               
@@ -500,8 +504,8 @@ const Cheques = () => {
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   >
                     <option value="">All Types</option>
-                    <option value="incoming">📥 Incoming</option>
-                    <option value="outgoing">📤 Outgoing</option>
+                    <option value="incoming">Incoming</option>
+                    <option value="outgoing">Outgoing</option>
                   </select>
                 </div>
                 
@@ -513,9 +517,9 @@ const Cheques = () => {
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   >
                     <option value="">All Status</option>
-                    <option value="pending">⏳ Pending</option>
-                    <option value="cleared">✅ Cleared</option>
-                    <option value="bounced">❌ Bounced</option>
+                    <option value="pending">Pending</option>
+                    <option value="cleared">Cleared</option>
+                    <option value="bounced">Bounced</option>
                   </select>
                 </div>
               </div>
@@ -578,10 +582,9 @@ const Cheques = () => {
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                     </svg>
                   ) : (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
+                    <FaSyncAlt className="w-3.5 h-3.5" />
                   )}
+                  <span>Refresh</span>
                 </button>
               </div>
             </div>
@@ -656,8 +659,9 @@ const Cheques = () => {
                           <td className="px-4 py-3">
                             <p className="text-sm text-gray-900">{formatDate(cheque.cheque_date)}</p>
                             {isOverdue && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-red-100 text-red-700 mt-1">
-                                ⚠️ Overdue
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-red-100 text-red-700 mt-1">
+                                <FaExclamationTriangle className="w-3 h-3" />
+                                <span>Overdue</span>
                               </span>
                             )}
                           </td>
@@ -672,9 +676,9 @@ const Cheques = () => {
                               onChange={(e) => handleStatusChange(cheque, e.target.value)}
                               className={`text-xs font-bold px-2 py-1 rounded-full border ${statusBadge.class} cursor-pointer`}
                             >
-                              <option value="pending">⏳ Pending</option>
-                              <option value="cleared">✅ Cleared</option>
-                              <option value="bounced">❌ Bounced</option>
+                              <option value="pending">Pending</option>
+                              <option value="cleared">Cleared</option>
+                              <option value="bounced">Bounced</option>
                             </select>
                           </td>
                           <td className="px-4 py-3">
@@ -686,30 +690,23 @@ const Cheques = () => {
                                     className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
                                     title="Edit cheque"
                                   >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                    </svg>
+                                    <FaEdit className="w-4 h-4" />
                                   </button>
                                   <button
                                     onClick={() => handleDeleteCheque(cheque)}
                                     className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
                                     title="Delete cheque"
                                   >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
+                                    <FaTrash className="w-4 h-4" />
                                   </button>
                                 </>
                               )}
                               <button
                                 onClick={() => openViewDetailsModal(cheque)}
-                                className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                                className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
                                 title="View cheque details"
                               >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
+                                <FaEye className="w-4 h-4 text-indigo-600" />
                               </button>
                             </div>
                           </td>
@@ -726,70 +723,84 @@ const Cheques = () => {
         {/* View Details Modal */}
         {viewingCheque && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setViewingCheque(null)}>
-            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6" onClick={e => e.stopPropagation()}>
-              <div className="flex justify-between items-center mb-4 pb-4 border-b">
-                <h3 className="text-lg font-bold text-gray-900">🧾 Cheque Details</h3>
-                <button onClick={() => setViewingCheque(null)} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              
+              {/* Header */}
+              <div className="flex justify-between items-center mb-5 pb-4 border-b">
+                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">
+                    <FaMoneyCheckAlt className="w-4 h-4" />
+                  </div>
+                  <span>Cheque Details</span>
+                </h3>
+                <button 
+                  onClick={() => setViewingCheque(null)} 
+                  className="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 flex items-center justify-center text-xl transition-colors"
+                >
+                  &times;
+                </button>
               </div>
               
               <div className="space-y-4">
-                {/* Cheque Number & ID */}
-                <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                  <span className="text-sm font-medium text-gray-500">Cheque Number</span>
-                  <span className="text-sm font-mono font-bold text-gray-900">{viewingCheque.cheque_number}</span>
+                {/* Cheque Number & Company */}
+                <div className="grid grid-cols-2 gap-4 py-2.5 border-b border-gray-100">
+                  <div>
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Cheque Number</span>
+                    <span className="text-base font-mono font-bold text-gray-900">{viewingCheque.cheque_number}</span>
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Company</span>
+                    <span className="text-base font-semibold text-gray-900">{viewingCheque.company_name}</span>
+                  </div>
                 </div>
                 
-                {/* Company */}
-                <div className="py-2 border-b border-gray-100">
-                  <span className="text-sm font-medium text-gray-500 block mb-1">Company</span>
-                  <p className="text-sm font-semibold text-gray-900">{viewingCheque.company_name}</p>
-                </div>
-                
-                {/* Type & Status */}
-                <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                  <span className="text-sm font-medium text-gray-500">Type</span>
-                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${getTypeBadge(viewingCheque.type).class}`}>
-                    {getTypeBadge(viewingCheque.type).label}
-                  </span>
-                </div>
-                
-                <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                  <span className="text-sm font-medium text-gray-500">Status</span>
-                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${getStatusBadge(viewingCheque.status).class}`}>
-                    {getStatusBadge(viewingCheque.status).label}
-                  </span>
-                </div>
-                
-                {/* Amount */}
-                <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                  <span className="text-sm font-medium text-gray-500">Amount</span>
-                  <span className={`text-lg font-black ${viewingCheque.type === 'incoming' ? 'text-green-600' : 'text-purple-600'}`}>
-                    {formatLKR(viewingCheque.amount)}
-                  </span>
+                {/* Type, Status, Amount */}
+                <div className="grid grid-cols-3 gap-4 py-2.5 border-b border-gray-100">
+                  <div>
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Type</span>
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${getTypeBadge(viewingCheque.type).class}`}>
+                      {getTypeBadge(viewingCheque.type).label}
+                    </span>
+                  </div>
+                  
+                  <div>
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Status</span>
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${getStatusBadge(viewingCheque.status).class}`}>
+                      {getStatusBadge(viewingCheque.status).label}
+                    </span>
+                  </div>
+                  
+                  <div>
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Amount</span>
+                    <span className={`text-base font-black ${viewingCheque.type === 'incoming' ? 'text-green-600' : 'text-purple-600'}`}>
+                      {formatLKR(viewingCheque.amount)}
+                    </span>
+                  </div>
                 </div>
                 
                 {/* Dates */}
-                <div className="py-2 border-b border-gray-100">
-                  <span className="text-sm font-medium text-gray-500 block mb-1">Cheque Date</span>
-                  <p className="text-sm text-gray-900">{formatDate(viewingCheque.cheque_date)}</p>
-                </div>
-                
-                <div className="py-2 border-b border-gray-100">
-                  <span className="text-sm font-medium text-gray-500 block mb-1">Remind Date</span>
-                  <p className="text-sm text-gray-900">{formatDate(viewingCheque.remind_date)} (1 day before)</p>
+                <div className="grid grid-cols-2 gap-4 py-2.5 border-b border-gray-100">
+                  <div>
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Cheque Date</span>
+                    <p className="text-sm text-gray-900 font-medium">{formatDate(viewingCheque.cheque_date)}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Remind Date</span>
+                    <p className="text-sm text-gray-900 font-medium">{formatDate(viewingCheque.remind_date)}</p>
+                  </div>
                 </div>
                 
                 {/* Notes */}
                 {viewingCheque.notes && (
-                  <div className="py-2 border-b border-gray-100">
-                    <span className="text-sm font-medium text-gray-500 block mb-1">Notes</span>
+                  <div className="py-2.5 border-b border-gray-100">
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Notes</span>
                     <p className="text-sm text-gray-700">{viewingCheque.notes}</p>
                   </div>
                 )}
                 
                 {/* Created By */}
                 {viewingCheque.created_by_name && (
-                  <div className="flex justify-between items-center py-2">
+                  <div className="flex justify-between items-center py-2.5">
                     <span className="text-sm font-medium text-gray-500">Added By</span>
                     <span className="text-sm font-semibold text-gray-900">{viewingCheque.created_by_name}</span>
                   </div>
@@ -797,19 +808,17 @@ const Cheques = () => {
               </div>
               
               {/* Modal Footer */}
-              <div className="flex gap-3 mt-6 pt-4 border-t">
+              <div className="flex flex-col sm:flex-row gap-3 mt-6 pt-4 border-t">
                 {isAdmin && (
                   <button
                     onClick={() => {
                       setViewingCheque(null);
                       openEditChequeForm(viewingCheque);
                     }}
-                    className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                    Edit This Cheque
+                    <FaEdit className="w-4 h-4" />
+                    <span>Edit This Cheque</span>
                   </button>
                 )}
                 <button
@@ -823,158 +832,172 @@ const Cheques = () => {
           </div>
         )}
         
-        {/* Cheque Form Modal */}
+        {/* Cheque Form Modal (Add / Edit) */}
         {showForm && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
-              <div className="flex justify-between items-center mb-4 pb-4 border-b">
-                <h3 className="text-lg font-bold text-gray-900">
-                  {editingCheque ? '✏️ Edit Cheque' : '🧾 Add New Cheque'}
+            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 sm:p-7 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              
+              {/* Header */}
+              <div className="flex justify-between items-center mb-5 pb-4 border-b">
+                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">
+                    {editingCheque ? <FaEdit className="w-4 h-4" /> : <FaPlus className="w-4 h-4" />}
+                  </div>
+                  <span>{editingCheque ? 'Edit Cheque' : 'Add New Cheque'}</span>
                 </h3>
-                <button onClick={() => { setShowForm(false); resetForm(); }} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+                <button 
+                  onClick={() => { setShowForm(false); resetForm(); }} 
+                  className="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 flex items-center justify-center text-xl transition-colors"
+                >
+                  &times;
+                </button>
               </div>
               
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Company Name with Autocomplete */}
-                <div className="relative" ref={companyInputRef}>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">
-                    Company Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={companySearch}
-                    onChange={(e) => handleCompanyChange(e.target.value)}
-                    onFocus={() => companySearch.length >= 2 && setShowCompanyDropdown(true)}
-                    placeholder="Type or select existing company..."
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    required
-                  />
-                  {showCompanyDropdown && filteredCompanies.length > 0 && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                      {filteredCompanies.map((company, index) => (
-                        <button
-                          key={index}
-                          type="button"
-                          onClick={() => selectCompany(company)}
-                          className="w-full text-left px-3 py-2 hover:bg-indigo-50 text-sm transition-colors"
-                        >
-                          {company}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  <p className="text-xs text-gray-500 mt-1">
-                    Start typing to see existing companies, or enter a new one
-                  </p>
-                </div>
                 
-                {/* Cheque Number */}
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">
-                    Cheque Number <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.cheque_number}
-                    onChange={(e) => handleFormChange('cheque_number', e.target.value)}
-                    placeholder="e.g., CHQ-2024-001"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-mono"
-                    required
-                  />
-                </div>
-                
-                {/* Amount & Type Row */}
-                <div className="grid grid-cols-2 gap-4">
+                {/* Company Name & Cheque Number Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Company Name with Autocomplete */}
+                  <div className="relative" ref={companyInputRef}>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                      Company Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={companySearch}
+                      onChange={(e) => handleCompanyChange(e.target.value)}
+                      onFocus={() => companySearch.length >= 2 && setShowCompanyDropdown(true)}
+                      placeholder="Type or select company..."
+                      className="input-pos text-sm h-11 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 w-full"
+                      required
+                    />
+                    {showCompanyDropdown && filteredCompanies.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        {filteredCompanies.map((company, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => selectCompany(company)}
+                            className="w-full text-left px-3 py-2 hover:bg-indigo-50 text-sm transition-colors"
+                          >
+                            {company}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Cheque Number */}
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                      Cheque Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.cheque_number}
+                      onChange={(e) => handleFormChange('cheque_number', e.target.value)}
+                      placeholder="e.g., CHQ-2024-001"
+                      className="input-pos font-mono font-bold text-sm h-11 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 w-full"
+                      required
+                    />
+                  </div>
+                </div>
+                
+                {/* Amount, Type & Status Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {/* Amount */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                       Amount (LKR) <span className="text-red-500">*</span>
                     </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">LKR</span>
+                    <div className="relative flex items-center">
+                      <span className="absolute left-3 text-gray-500 font-bold text-sm pointer-events-none">LKR</span>
                       <input
                         type="number"
                         step="0.01"
                         min="0.01"
                         value={formData.amount}
                         onChange={(e) => handleFormChange('amount', e.target.value)}
-                        className="w-full pl-14 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-bold"
+                        className="input-pos pl-12 font-bold text-base h-11 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 w-full"
                         placeholder="0.00"
                         required
                       />
                     </div>
                   </div>
                   
+                  {/* Type */}
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                       Type <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={formData.type}
                       onChange={(e) => handleFormChange('type', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      className="input-pos h-11 text-sm border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 font-medium w-full"
                       required
                     >
-                      <option value="incoming">📥 Incoming</option>
-                      <option value="outgoing">📤 Outgoing</option>
+                      <option value="incoming">Incoming</option>
+                      <option value="outgoing">Outgoing</option>
+                    </select>
+                  </div>
+                  
+                  {/* Status */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                      Status
+                    </label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) => handleFormChange('status', e.target.value)}
+                      className="input-pos h-11 text-sm border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 font-medium w-full"
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="cleared">Cleared</option>
+                      <option value="bounced">Bounced</option>
                     </select>
                   </div>
                 </div>
                 
                 {/* Cheque Date */}
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                     Cheque Date (Due Date) <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
                     value={formData.cheque_date}
                     onChange={(e) => handleFormChange('cheque_date', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="input-pos h-11 text-sm border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 w-full"
                     required
                   />
                   {formData.cheque_date && (
-                    <p className="text-xs text-indigo-600 mt-1">
-                      🔔 Reminder will be set for: {formatDate(new Date(new Date(formData.cheque_date).setDate(new Date(formData.cheque_date).getDate() - 1)))}
+                    <p className="text-xs text-indigo-600 mt-1 flex items-center gap-1">
+                      <FaBell className="w-3 h-3 text-indigo-600 shrink-0" />
+                      <span>Reminder will be set for: {formatDate(new Date(new Date(formData.cheque_date).setDate(new Date(formData.cheque_date).getDate() - 1)))}</span>
                     </p>
                   )}
                 </div>
                 
-                {/* Status */}
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">
-                    Status
-                  </label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => handleFormChange('status', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  >
-                    <option value="pending">⏳ Pending</option>
-                    <option value="cleared">✅ Cleared</option>
-                    <option value="bounced">❌ Bounced</option>
-                  </select>
-                </div>
-                
                 {/* Notes */}
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                     Notes (Optional)
                   </label>
                   <textarea
                     value={formData.notes}
                     onChange={(e) => handleFormChange('notes', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="input-pos text-sm border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 w-full"
                     rows={2}
                     placeholder="Additional notes about this cheque..."
                   />
                 </div>
                 
-                {/* Submit */}
-                <div className="flex gap-3 pt-4">
+                {/* Submit & Cancel */}
+                <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
                   <button
                     type="submit"
                     disabled={formLoading}
-                    className="flex-1 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold rounded-xl transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {formLoading ? (
                       <>
@@ -982,9 +1005,19 @@ const Cheques = () => {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                         </svg>
-                        Saving...
+                        <span>Saving...</span>
                       </>
-                    ) : editingCheque ? '✅ Update Cheque' : '💾 Save Cheque'}
+                    ) : editingCheque ? (
+                      <>
+                        <FaCheck className="w-4 h-4" />
+                        <span>Update Cheque</span>
+                      </>
+                    ) : (
+                      <>
+                        <FaSave className="w-4 h-4" />
+                        <span>Save Cheque</span>
+                      </>
+                    )}
                   </button>
                   <button
                     type="button"

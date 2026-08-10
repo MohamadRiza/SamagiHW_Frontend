@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import JsBarcode from 'jsbarcode';
+import { FaLightbulb } from 'react-icons/fa';
 
 // ✅ REAL Code128 Barcode Generator
 const generateCode128Barcode = (code, height = 40) => {
@@ -403,8 +404,9 @@ const BarcodeGenerator = ({ barcode, item_name, product_id, selling_price, sub_b
       </button>
 
       {/* Tipsss */}
-      <p className="text-[9px] text-gray-400 text-center">
-        💡 50mm × 30mm thermal label · DPI 203 or 300 · Real price shown (not discounted)
+      <p className="text-[9px] text-gray-400 text-center flex items-center justify-center gap-1">
+        <FaLightbulb className="w-3 h-3 text-amber-500 shrink-0" />
+        <span>50mm × 30mm thermal label · DPI 203 or 300 · Real price shown (not discounted)</span>
       </p>
     </div>
   );

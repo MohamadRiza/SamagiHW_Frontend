@@ -1,4 +1,5 @@
 import { useAuth } from '../../contexts/AuthContext';
+import { FaSignOutAlt } from 'react-icons/fa';
 
 const SidebarFooter = ({ collapsed, isDesktop }) => {
   const { user, logout } = useAuth();
@@ -43,7 +44,7 @@ const SidebarFooter = ({ collapsed, isDesktop }) => {
               focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-inset"
             aria-label="Logout from system"
           >
-            <span className="text-lg" aria-hidden="true">🚪</span>
+            <FaSignOutAlt className="text-lg shrink-0" aria-hidden="true" />
             <span className="font-medium text-sm">Logout</span>
           </button>
         </>
@@ -51,11 +52,11 @@ const SidebarFooter = ({ collapsed, isDesktop }) => {
         <button
           onClick={handleLogout}
           className="w-full p-3 rounded-lg text-red-400 hover:bg-red-500/10 hover:text-red-300 
-            transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-400"
+            transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-400 flex items-center justify-center"
           title="Logout"
           aria-label="Logout from system"
         >
-          <span className="text-xl" aria-hidden="true">🚪</span>
+          <FaSignOutAlt className="text-lg shrink-0" aria-hidden="true" />
         </button>
       )}
     </div>

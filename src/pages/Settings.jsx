@@ -3,6 +3,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { Sidebar } from '../components/layout';
 import SettingsService from '../services/settings.service';
 import { Toaster, toast } from 'react-hot-toast';
+import {
+  FaSyncAlt, FaSearch, FaDownload, FaBox, FaUserCog,
+  FaDatabase, FaCheckCircle, FaExclamationCircle, FaDesktop,
+  FaKey, FaLock
+} from 'react-icons/fa';
 
 const Settings = () => {
   const { user, logout, updateUserData } = useAuth();
@@ -60,15 +65,15 @@ const Settings = () => {
             releaseNotes: data.releaseNotes,
             releaseDate: data.releaseDate
           }));
-          toast.success(`🎉 Update v${data.version} available!`, { duration: 8000 });
+          toast.success(`Update v${data.version} available!`, { duration: 8000 });
         } else if (data.status === 'downloaded') {
-          toast.success('✅ Update downloaded and ready to install!', { duration: 5000 });
+          toast.success('Update downloaded and ready to install!', { duration: 5000 });
           setDownloadingUpdate(false);
           setDownloadProgress(100);
         } else if (data.status === 'checking') {
           toast.loading('Checking for updates...', { id: 'update-check' });
         } else if (data.status === 'not-available') {
-          toast.success('✅ You have the latest version', { id: 'update-check', duration: 3000 });
+          toast.success('You have the latest version', { id: 'update-check', duration: 3000 });
         }
       });
       
@@ -88,7 +93,7 @@ const Settings = () => {
         console.error('Update error:', data);
         setUpdateError(data.error);
         setDownloadingUpdate(false);
-        toast.error(`❌ Update error: ${data.error}`, { duration: 5000 });
+        toast.error(`Update error: ${data.error}`, { duration: 5000 });
       });
       
       // Cleanup listeners on unmount
@@ -154,11 +159,11 @@ const Settings = () => {
           releaseDate: result.data.releaseDate
         });
         if (!silent) {
-          toast.success(`🎉 Update v${result.data.latestVersion} available!`, { id: 'update-check', duration: 8000 });
+          toast.success(`Update v${result.data.latestVersion} available!`, { id: 'update-check', duration: 8000 });
         }
       } else if (result?.success && !result.data?.hasUpdate) {
         if (!silent) {
-          toast.success('✅ You have the latest version', { id: 'update-check', duration: 3000 });
+          toast.success('You have the latest version', { id: 'update-check', duration: 3000 });
         }
       } else if (!silent) {
         toast.error(result?.error || 'Failed to check for updates', { id: 'update-check' });
@@ -168,7 +173,7 @@ const Settings = () => {
       console.error('Check updates error:', error);
       setUpdateError('Failed to check for updates');
       if (!silent) {
-        toast.error('❌ Failed to check for updates', { id: 'update-check' });
+        toast.error('Failed to check for updates', { id: 'update-check' });
       }
     } finally {
       setCheckingUpdate(false);
@@ -189,7 +194,7 @@ const Settings = () => {
       
       // Confirm with user
       const confirmed = window.confirm(
-        `⚠️ Download and install update to v${updateInfo.latestVersion}?\n\n` +
+        `Download and install update to v${updateInfo.latestVersion}?\n\n` +
         `Current version: v${updateInfo.currentVersion}\n` +
         `New version: v${updateInfo.latestVersion}\n\n` +
         `What's new:\n${updateInfo.releaseNotes || 'Bug fixes and improvements'}\n\n` +
@@ -218,7 +223,7 @@ const Settings = () => {
       console.error('Download update error:', error);
       setUpdateError(error.message);
       setDownloadingUpdate(false);
-      toast.error(`❌ Update failed: ${error.message}`, { id: 'update-download', duration: 5000 });
+      toast.error(`Update failed: ${error.message}`, { id: 'update-download', duration: 5000 });
     }
   };
 
@@ -241,7 +246,7 @@ const Settings = () => {
       }
     } catch (error) {
       console.error('Install update error:', error);
-      toast.error(`❌ Installation failed: ${error.message}`, { id: 'update-install' });
+      toast.error(`Installation failed: ${error.message}`, { id: 'update-install' });
     }
   };
 
@@ -255,17 +260,17 @@ const Settings = () => {
     e.preventDefault();
     
     if (accountForm.newPassword && accountForm.newPassword.length < 6) {
-      toast.error('❌ New password must be at least 6 characters');
+      toast.error('New password must be at least 6 characters');
       return;
     }
     
     if (accountForm.newPassword !== accountForm.confirmNewPassword) {
-      toast.error('❌ New passwords do not match');
+      toast.error('New passwords do not match');
       return;
     }
     
     if (!accountForm.currentPassword) {
-      toast.error('❌ Current password is required');
+      toast.error('Current password is required');
       return;
     }
     
@@ -279,7 +284,7 @@ const Settings = () => {
       });
       
       if (response?.success) {
-        toast.success('✅ Credentials updated successfully');
+        toast.success('Credentials updated successfully');
         if (response.data?.username && response.data.username !== user?.username) {
           updateUserData({ username: response.data.username });
         }
@@ -294,11 +299,11 @@ const Settings = () => {
         });
         fetchProfile();
       } else {
-        toast.error(response?.error || '❌ Failed to update credentials');
+        toast.error(response?.error || 'Failed to update credentials');
       }
     } catch (error) {
       console.error('Update credentials error:', error);
-      toast.error('❌ Network error updating credentials');
+      toast.error('Network error updating credentials');
     } finally {
       setAccountLoading(false);
     }
@@ -331,13 +336,13 @@ const Settings = () => {
       
       if (result?.success) {
         setBackupPath(result.path);
-        toast.success('🎉 Backup saved to Desktop successfully!', { id: 'desktop-backup', duration: 6000 });
+        toast.success('Backup saved to Desktop successfully!', { id: 'desktop-backup', duration: 6000 });
       } else {
         toast.error(result?.error || 'Failed to create backup', { id: 'desktop-backup' });
       }
     } catch (error) {
       console.error('Desktop backup error:', error);
-      toast.error('❌ Failed to create Desktop backup', { id: 'desktop-backup' });
+      toast.error('Failed to create Desktop backup', { id: 'desktop-backup' });
     } finally {
       setBackupLoading(false);
     }
@@ -360,13 +365,13 @@ const Settings = () => {
                 onClick={handleInstallUpdate}
                 className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
               >
-                <span>📦</span>
+                <FaBox className="w-4 h-4" />
                 <span>Install Update Now</span>
               </button>
             )}
             {updateStatus?.status === 'available' && !downloadingUpdate && (
               <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-100 text-amber-800 rounded-full text-sm font-medium">
-                <span>🔄</span>
+                <FaSyncAlt className="w-3.5 h-3.5" />
                 <span>Update v{updateStatus.version} ready</span>
               </div>
             )}
@@ -376,10 +381,12 @@ const Settings = () => {
         <div className="p-6 lg:p-8 max-w-6xl mx-auto w-full">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
-            {/* 🔄 Software Update Section */}
+            {/* Software Update Section */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white text-xl">🔄</div>
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white text-xl">
+                  <FaSyncAlt className="w-5 h-5 text-white" />
+                </div>
                 <div>
                   <h2 className="font-bold text-gray-900">Software Update</h2>
                   <p className="text-xs text-gray-500">Keep your POS system up to date</p>
@@ -407,7 +414,7 @@ const Settings = () => {
               {updateInfo?.hasUpdate && (
                 <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                   <div className="flex items-start gap-3">
-                    <span className="text-2xl">🎉</span>
+                    <FaCheckCircle className="text-2xl text-amber-600 shrink-0 mt-0.5" />
                     <div className="flex-1">
                       <p className="font-bold text-amber-800">Update Available!</p>
                       <p className="text-sm text-amber-700 mt-1">
@@ -434,7 +441,7 @@ const Settings = () => {
               {updateInfo && !updateInfo.hasUpdate && !checkingUpdate && (
                 <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
                   <div className="flex items-center gap-2">
-                    <span className="text-xl">✅</span>
+                    <FaCheckCircle className="text-xl text-green-600 shrink-0" />
                     <p className="text-sm text-green-700 font-medium">You have the latest version</p>
                   </div>
                 </div>
@@ -485,10 +492,13 @@ const Settings = () => {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                       </svg>
-                      Checking...
+                      <span>Checking...</span>
                     </>
                   ) : (
-                    '🔍 Check for Updates'
+                    <>
+                      <FaSearch className="w-4 h-4" />
+                      <span>Check for Updates</span>
+                    </>
                   )}
                 </button>
                 
@@ -504,10 +514,13 @@ const Settings = () => {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                         </svg>
-                        Downloading...
+                        <span>Downloading...</span>
                       </>
                     ) : (
-                      `⬇️ Download v${updateInfo.latestVersion}`
+                      <>
+                        <FaDownload className="w-4 h-4" />
+                        <span>Download v{updateInfo.latestVersion}</span>
+                      </>
                     )}
                   </button>
                 )}
@@ -517,24 +530,27 @@ const Settings = () => {
                     onClick={handleInstallUpdate}
                     className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
                   >
-                    <span>📦</span>
-                    Install Now
+                    <FaBox className="w-4 h-4" />
+                    <span>Install Now</span>
                   </button>
                 )}
               </div>
               
-              <p className="text-xs text-gray-400 mt-4 text-center">
-                🔒 Your database is automatically backed up before any update
+              <p className="text-xs text-gray-400 mt-4 text-center flex items-center justify-center gap-1">
+                <FaLock className="w-3 h-3 text-gray-400 shrink-0" />
+                <span>Your database is automatically backed up before any update</span>
               </p>
               <p className="text-xs text-gray-400 mt-1 text-center">
                 Updates are downloaded from GitHub and installed automatically
               </p>
             </div>
             
-            {/* 👤 Account Settings Section */}
+            {/* Account Settings Section */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-xl">👤</div>
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-xl">
+                  <FaUserCog className="w-5 h-5 text-white" />
+                </div>
                 <div>
                   <h2 className="font-bold text-gray-900">Account Settings</h2>
                   <p className="text-xs text-gray-500">Update your login credentials</p>
@@ -633,16 +649,21 @@ const Settings = () => {
                       Updating...
                     </>
                   ) : (
-                    '💾 Update Credentials'
+                    <>
+                      <FaKey className="w-4 h-4" />
+                      <span>Update Credentials</span>
+                    </>
                   )}
                 </button>
               </form>
             </div>
 
-            {/* 💾 Database Backup Section */}
+            {/* Database Backup Section */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white text-xl">💾</div>
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white text-xl">
+                  <FaDatabase className="w-5 h-5 text-white" />
+                </div>
                 <div>
                   <h2 className="font-bold text-gray-900">Database Backup</h2>
                   <p className="text-xs text-gray-500">Back up database and important files to your Desktop</p>
@@ -662,7 +683,10 @@ const Settings = () => {
 
               {backupPath && (
                 <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                  <p className="text-xs font-bold text-emerald-800">✅ Backup Created Successfully!</p>
+                  <p className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+                    <FaCheckCircle className="text-emerald-600 shrink-0" />
+                    <span>Backup Created Successfully!</span>
+                  </p>
                   <p className="text-xs text-emerald-700 mt-1 truncate" title={backupPath}>
                     Location: {backupPath}
                   </p>
@@ -680,10 +704,13 @@ const Settings = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                     </svg>
-                    Creating Backup...
+                    <span>Creating Backup...</span>
                   </>
                 ) : (
-                  '💾 Create Desktop Backup'
+                  <>
+                    <FaDatabase className="w-4 h-4" />
+                    <span>Create Desktop Backup</span>
+                  </>
                 )}
               </button>
             </div>
@@ -698,9 +725,9 @@ const Settings = () => {
                   if (!systemInfo) fetchSystemInfo();
                   setShowSystemInfo(!showSystemInfo);
                 }}
-                className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1.5"
               >
-                <span>🖥️</span>
+                <FaDesktop className="w-4 h-4 text-gray-500 shrink-0" />
                 <span>{showSystemInfo ? 'Hide' : 'Show'} System Information</span>
               </button>
               

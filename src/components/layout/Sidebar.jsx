@@ -125,7 +125,7 @@ const Sidebar = () => {
       {/* Sidebar */}
       <aside
         id="sidebar"
-        className={`fixed lg:static inset-y-0 left-0 z-50 flex flex-col
+        className={`fixed lg:sticky top-0 left-0 h-screen shrink-0 z-50 flex flex-col
           bg-sidebar border-r border-sidebar-border
           transition-all duration-300 ease-in-out shadow-xl outline-none
           ${collapsed ? 'w-20' : 'w-64'}

@@ -4,6 +4,10 @@ import { Sidebar } from '../components/layout';
 import ExpenseService from '../services/expense.service';
 import ExpenseCategoryService from '../services/expenseCategory.service';
 import { Toaster, toast } from 'react-hot-toast';
+import {
+  FaPlus, FaEdit, FaTrash, FaEye, FaSyncAlt,
+  FaFileInvoiceDollar, FaSave, FaFolderPlus, FaCheck, FaMoneyBillWave
+} from 'react-icons/fa';
 
 const Expenses = () => {
   const { user } = useAuth();
@@ -229,12 +233,12 @@ const Expenses = () => {
       if (editingExpense) {
         response = await ExpenseService.update(editingExpense.id, expenseData);
         if (response?.success) {
-          toast.success('✅ Expense updated successfully');
+          toast.success('Expense updated successfully');
         }
       } else {
         response = await ExpenseService.create(expenseData);
         if (response?.success) {
-          toast.success('✅ Expense added successfully');
+          toast.success('Expense added successfully');
         }
       }
       
@@ -268,7 +272,7 @@ const Expenses = () => {
     try {
       const response = await ExpenseService.delete(expense.id);
       if (response?.success) {
-        toast.success('✅ Expense deleted');
+        toast.success('Expense deleted');
         fetchExpenses();
         fetchTotals();
       } else {
@@ -295,7 +299,7 @@ const Expenses = () => {
       );
       
       if (response?.success && response.data) {
-        toast.success('✅ Category created');
+        toast.success('Category created');
         setCategories(prev => [...prev, response.data]);
         setNewCategory({ name: '', description: '', color: '#3b82f6' });
         setShowCategoryModal(false);
@@ -450,17 +454,19 @@ const Expenses = () => {
             {/* Search */}
             <div className="flex-1">
               <label className="block text-xs font-medium text-gray-500 mb-1">Search</label>
-              <div className="relative">
+              <div className="relative flex items-center">
                 <input
                   type="text"
                   value={filters.search}
                   onChange={(e) => setFilters({...filters, search: e.target.value})}
                   placeholder="Search by reason..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 h-10 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-colors"
                 />
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
+                <div className="absolute left-3 flex items-center justify-center pointer-events-none">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
               </div>
             </div>
             
@@ -665,85 +671,88 @@ const Expenses = () => {
           )}
         </div>
         
-        {/* ✅ NEW: View Details Modal */}
+        {/* View Details Modal */}
         {viewingExpense && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setViewingExpense(null)}>
-            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6" onClick={e => e.stopPropagation()}>
-              <div className="flex justify-between items-center mb-4 pb-4 border-b">
-                <h3 className="text-lg font-bold text-gray-900">📋 Expense Details</h3>
-                <button onClick={() => setViewingExpense(null)} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              
+              {/* Header */}
+              <div className="flex justify-between items-center mb-5 pb-4 border-b">
+                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center text-rose-600">
+                    <FaFileInvoiceDollar className="w-4 h-4" />
+                  </div>
+                  <span>Expense Details</span>
+                </h3>
+                <button 
+                  onClick={() => setViewingExpense(null)} 
+                  className="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 flex items-center justify-center text-xl transition-colors"
+                >
+                  &times;
+                </button>
               </div>
               
               <div className="space-y-4">
                 {/* ID */}
-                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                <div className="flex justify-between items-center py-2.5 border-b border-gray-100">
                   <span className="text-sm font-medium text-gray-500">Expense ID</span>
                   <span className="text-sm font-mono font-bold text-gray-900">#{viewingExpense.id}</span>
                 </div>
                 
                 {/* Reason */}
-                <div className="py-2 border-b border-gray-100">
-                  <span className="text-sm font-medium text-gray-500 block mb-1">Reason</span>
-                  <p className="text-sm font-semibold text-gray-900">{viewingExpense.reason}</p>
+                <div className="py-2.5 border-b border-gray-100">
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Reason</span>
+                  <p className="text-base font-semibold text-gray-900">{viewingExpense.reason}</p>
                 </div>
                 
-                {/* Category */}
-                <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                  <span className="text-sm font-medium text-gray-500">Category</span>
-                  {(() => {
-                    const cat = categories.find(c => c.id === viewingExpense.category_id);
-                    const badge = getCategoryBadge(cat);
-                    return (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border" style={badge.style}>
-                        {badge.label}
-                      </span>
-                    );
-                  })()}
-                </div>
-                
-                {/* Amount */}
-                <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                  <span className="text-sm font-medium text-gray-500">Amount</span>
-                  <span className="text-lg font-black text-rose-600">{formatLKR(viewingExpense.amount)}</span>
+                {/* Category & Amount 2-Col */}
+                <div className="grid grid-cols-2 gap-4 py-2.5 border-b border-gray-100">
+                  <div>
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Category</span>
+                    {(() => {
+                      const cat = categories.find(c => c.id === viewingExpense.category_id);
+                      const badge = getCategoryBadge(cat);
+                      return (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border" style={badge.style}>
+                          {badge.label}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                  
+                  <div>
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Amount</span>
+                    <span className="text-lg font-black text-rose-600">{formatLKR(viewingExpense.amount)}</span>
+                  </div>
                 </div>
                 
                 {/* Date & Time */}
-                <div className="py-2 border-b border-gray-100">
-                  <span className="text-sm font-medium text-gray-500 block mb-1">Date & Time</span>
-                  <p className="text-sm text-gray-900">{formatDateTime(viewingExpense.expense_date)}</p>
+                <div className="py-2.5 border-b border-gray-100">
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Date & Time</span>
+                  <p className="text-sm text-gray-900 font-medium">{formatDateTime(viewingExpense.expense_date)}</p>
                 </div>
                 
                 {/* Created By */}
                 {viewingExpense.created_by_name && (
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <div className="flex justify-between items-center py-2.5 border-b border-gray-100">
                     <span className="text-sm font-medium text-gray-500">Added By</span>
                     <span className="text-sm font-semibold text-gray-900">{viewingExpense.created_by_name}</span>
-                  </div>
-                )}
-                
-                {/* Last Updated */}
-                {viewingExpense.updated_at && (
-                  <div className="py-2">
-                    <span className="text-sm font-medium text-gray-500 block mb-1">Last Updated</span>
-                    <p className="text-sm text-gray-900">{formatDateTime(viewingExpense.updated_at)}</p>
                   </div>
                 )}
               </div>
               
               {/* Modal Footer */}
-              <div className="flex gap-3 mt-6 pt-4 border-t">
+              <div className="flex flex-col sm:flex-row gap-3 mt-6 pt-4 border-t">
                 {isAdmin && (
                   <button
                     onClick={() => {
                       setViewingExpense(null);
                       openEditExpenseForm(viewingExpense);
                     }}
-                    className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                    Edit This Expense
+                    <FaEdit className="w-4 h-4" />
+                    <span>Edit This Expense</span>
                   </button>
                 )}
                 <button
@@ -757,105 +766,118 @@ const Expenses = () => {
           </div>
         )}
         
-        {/* Expense Form Modal */}
+        {/* Expense Form Modal (Add / Edit) */}
         {showForm && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
-              <div className="flex justify-between items-center mb-4 pb-4 border-b">
-                <h3 className="text-lg font-bold text-gray-900">
-                  {editingExpense ? '✏️ Edit Expense' : '➕ Add New Expense'}
+            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 sm:p-7 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              
+              {/* Header */}
+              <div className="flex justify-between items-center mb-5 pb-4 border-b">
+                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center text-rose-600">
+                    {editingExpense ? <FaEdit className="w-4 h-4" /> : <FaPlus className="w-4 h-4" />}
+                  </div>
+                  <span>{editingExpense ? 'Edit Expense' : 'Add New Expense'}</span>
                 </h3>
-                <button onClick={() => { setShowForm(false); resetForm(); }} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+                <button 
+                  onClick={() => { setShowForm(false); resetForm(); }} 
+                  className="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 flex items-center justify-center text-xl transition-colors"
+                >
+                  &times;
+                </button>
               </div>
               
               <form onSubmit={handleSubmit} className="space-y-4">
+                
                 {/* Reason */}
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                     Reason <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     value={formData.reason}
                     onChange={(e) => handleFormChange('reason', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                    className="input-pos text-sm border-gray-300 focus:border-rose-500 focus:ring-rose-500 w-full"
                     rows={2}
                     placeholder="Why was this expense incurred? (e.g., Office electricity bill)"
                     required
                   />
                 </div>
                 
-                {/* Amount */}
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">
-                    Amount (LKR) <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">LKR</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      value={formData.amount}
-                      onChange={(e) => handleFormChange('amount', e.target.value)}
-                      className="w-full pl-14 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent font-bold"
-                      placeholder="0.00"
-                      required
-                    />
+                {/* 2 Column Grid: Amount & Category */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  
+                  {/* Amount */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                      Amount (LKR) <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative flex items-center">
+                      <span className="absolute left-3 text-gray-500 font-bold text-sm pointer-events-none">LKR</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        value={formData.amount}
+                        onChange={(e) => handleFormChange('amount', e.target.value)}
+                        className="input-pos pl-12 font-bold text-lg h-11 border-gray-300 focus:border-rose-500 focus:ring-rose-500 w-full"
+                        placeholder="0.00"
+                        required
+                      />
+                    </div>
                   </div>
-                </div>
-                
-                {/* Category */}
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">
-                    Category <span className="text-red-500">*</span>
-                  </label>
-                  <div className="flex gap-2">
-                    <select
-                      value={formData.category_id}
-                      onChange={(e) => handleFormChange('category_id', e.target.value)}
-                      className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent"
-                      required
-                    >
-                      <option value="">Select category</option>
-                      {categories.map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => setShowCategoryModal(true)}
-                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-200 transition-colors"
-                      title="Add new category"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                    </button>
+                  
+                  {/* Category */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                      Category <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <select
+                        value={formData.category_id}
+                        onChange={(e) => handleFormChange('category_id', e.target.value)}
+                        className="input-pos h-11 text-sm border-gray-300 focus:border-rose-500 focus:ring-rose-500 font-medium flex-1"
+                        required
+                      >
+                        <option value="">Select category</option>
+                        {categories.map(cat => (
+                          <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => setShowCategoryModal(true)}
+                        className="w-11 h-11 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg border border-gray-200 transition-colors flex items-center justify-center shrink-0"
+                        title="Add new category"
+                      >
+                        <FaPlus className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
                 
                 {/* Date & Time */}
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">
-                    Date & Time <span className="text-gray-400 font-normal">(Auto-filled)</span>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                    Date & Time <span className="text-gray-400 font-normal lowercase">(Auto-filled)</span>
                   </label>
                   <input
                     type="datetime-local"
                     value={formData.expense_date}
                     onChange={(e) => handleFormChange('expense_date', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                    className="input-pos h-11 text-sm border-gray-300 focus:border-rose-500 focus:ring-rose-500 w-full"
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Defaults to current time. Click to adjust if needed.
                   </p>
                 </div>
                 
-                {/* Submit */}
-                <div className="flex gap-3 pt-4">
+                {/* Submit & Cancel */}
+                <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
                   <button
                     type="submit"
                     disabled={formLoading}
-                    className="flex-1 py-3 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white font-bold rounded-xl transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {formLoading ? (
                       <>
@@ -863,9 +885,19 @@ const Expenses = () => {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                         </svg>
-                        Saving...
+                        <span>Saving...</span>
                       </>
-                    ) : editingExpense ? '✅ Update Expense' : '💾 Save Expense'}
+                    ) : editingExpense ? (
+                      <>
+                        <FaCheck className="w-4 h-4" />
+                        <span>Update Expense</span>
+                      </>
+                    ) : (
+                      <>
+                        <FaSave className="w-4 h-4" />
+                        <span>Save Expense</span>
+                      </>
+                    )}
                   </button>
                   <button
                     type="button"
@@ -883,23 +915,28 @@ const Expenses = () => {
         {/* Add Category Modal */}
         {showCategoryModal && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowCategoryModal(false)}>
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
-              <div className="flex justify-between items-center mb-4 pb-4 border-b">
-                <h3 className="text-lg font-bold text-gray-900">➕ Add New Category</h3>
-                <button onClick={() => setShowCategoryModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-5 pb-4 border-b">
+                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">
+                    <FaFolderPlus className="w-4 h-4" />
+                  </div>
+                  <span>Add New Category</span>
+                </h3>
+                <button onClick={() => setShowCategoryModal(false)} className="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600 flex items-center justify-center text-xl transition-colors">&times;</button>
               </div>
               
               <div className="space-y-4">
                 {/* Category Name */}
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                     Category Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={newCategory.name}
                     onChange={(e) => setNewCategory({...newCategory, name: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="input-pos text-sm border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 w-full"
                     placeholder="e.g., Marketing, Maintenance"
                     required
                   />
@@ -907,13 +944,13 @@ const Expenses = () => {
                 
                 {/* Description */}
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                     Description (Optional)
                   </label>
                   <textarea
                     value={newCategory.description}
                     onChange={(e) => setNewCategory({...newCategory, description: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="input-pos text-sm border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 w-full"
                     rows={2}
                     placeholder="Brief description of this expense category"
                   />
@@ -921,7 +958,7 @@ const Expenses = () => {
                 
                 {/* Color Picker */}
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                     Color (Optional)
                   </label>
                   <div className="flex items-center gap-3">
@@ -931,22 +968,20 @@ const Expenses = () => {
                       onChange={(e) => setNewCategory({...newCategory, color: e.target.value})}
                       className="w-12 h-10 rounded border border-gray-200 cursor-pointer"
                     />
-                    <span className="text-sm text-gray-600">
+                    <span className="text-xs text-gray-500">
                       Used for visual identification in reports
                     </span>
                   </div>
                 </div>
                 
                 {/* Submit */}
-                <div className="flex gap-3 pt-4">
+                <div className="flex gap-3 pt-4 border-t">
                   <button
                     onClick={handleCreateCategory}
-                    className="flex-1 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Create Category
+                    <FaFolderPlus className="w-4 h-4" />
+                    <span>Create Category</span>
                   </button>
                   <button
                     onClick={() => setShowCategoryModal(false)}

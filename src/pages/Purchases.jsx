@@ -3,6 +3,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { Sidebar } from '../components/layout';
 import PurchaseService from '../services/purchase.service';
 import { Toaster, toast } from 'react-hot-toast';
+import {
+  FaPlus, FaEdit, FaTrash, FaEye, FaFileAlt, FaFileInvoiceDollar,
+  FaMoneyBillWave, FaCheckCircle, FaCheck, FaBolt, FaAdjust,
+  FaTimesCircle, FaDollarSign, FaBox, FaSave, FaPaperclip, FaClock
+} from 'react-icons/fa';
 
 const Purchases = () => {
   const { user } = useAuth();
@@ -139,21 +144,21 @@ const Purchases = () => {
     // Validate file type
     const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
     if (!validTypes.includes(file.type)) {
-      toast.error('❌ Only PDF, JPG, JPEG, and PNG files are allowed');
+      toast.error('Only PDF, JPG, JPEG, and PNG files are allowed');
       e.target.value = '';
       return;
     }
     
     // Validate file size (10MB)
     if (file.size > 10 * 1024 * 1024) {
-      toast.error('❌ File size must be less than 10MB');
+      toast.error('File size must be less than 10MB');
       e.target.value = '';
       return;
     }
     
-    // ✅ Set file and show confirmation
+    // Set file and show confirmation
     setFormData(prev => ({ ...prev, bill_file: file }));
-    setFileMessage(`✅ ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
+    setFileMessage(`${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
     
     // Create preview for images
     if (file.type.startsWith('image/')) {
@@ -167,7 +172,7 @@ const Purchases = () => {
     }
   };
 
-  // ✅ FIXED: Remove file
+  // Remove file
   const handleRemoveFile = () => {
     setFormData(prev => ({ ...prev, bill_file: null }));
     setPreviewFile(null);
@@ -197,7 +202,7 @@ const Purchases = () => {
     setShowForm(true);
   };
 
-  // ✅ FIXED: Open form for editing purchase with proper data
+  // Open form for editing purchase with proper data
   const openEditPurchaseForm = (purchase) => {
     setFormData({
       title: purchase.title,
@@ -211,7 +216,7 @@ const Purchases = () => {
     });
     setEditingPurchase(purchase);
     setPreviewFile(null);
-    setFileMessage(purchase.bill_file_name ? `📎 ${purchase.bill_file_name}` : '');
+    setFileMessage(purchase.bill_file_name || '');
     setShowForm(true);
   };
 
@@ -229,24 +234,24 @@ const Purchases = () => {
     setViewingPurchase(purchase);
   };
 
-  // ✅ FIXED: Handle form submit with better validation
+  // Handle form submit with better validation
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Validation
     if (!formData.title.trim() || formData.title.trim().length < 3) {
-      toast.error('❌ Title must be at least 3 characters');
+      toast.error('Title must be at least 3 characters');
       return;
     }
     
     const billAmount = parseFloat(formData.bill_amount);
     if (isNaN(billAmount) || billAmount <= 0) {
-      toast.error('❌ Bill amount must be a positive number');
+      toast.error('Bill amount must be a positive number');
       return;
     }
     
     if (!formData.purchase_date) {
-      toast.error('❌ Purchase date is required');
+      toast.error('Purchase date is required');
       return;
     }
     
@@ -281,12 +286,12 @@ const Purchases = () => {
       if (editingPurchase) {
         response = await PurchaseService.update(editingPurchase.id, purchaseData);
         if (response?.success) {
-          toast.success('✅ Purchase updated successfully');
+          toast.success('Purchase updated successfully');
         }
       } else {
         response = await PurchaseService.create(purchaseData);
         if (response?.success) {
-          toast.success('✅ Purchase added successfully');
+          toast.success('Purchase added successfully');
         }
       }
       
@@ -296,11 +301,11 @@ const Purchases = () => {
         fetchPurchases();
         fetchStats();
       } else {
-        toast.error(response?.error || '❌ Failed to save purchase');
+        toast.error(response?.error || 'Failed to save purchase');
       }
     } catch (error) {
       console.error('Submit purchase error:', error);
-      toast.error('❌ Network error saving purchase');
+      toast.error('Network error saving purchase');
     } finally {
       setFormLoading(false);
     }
@@ -312,7 +317,7 @@ const Purchases = () => {
     
     const amount = parseFloat(paymentData.paid_amount);
     if (isNaN(amount) || amount <= 0) {
-      toast.error('❌ Please enter a valid payment amount');
+      toast.error('Please enter a valid payment amount');
       return;
     }
     
@@ -322,23 +327,23 @@ const Purchases = () => {
       });
       
       if (response?.success) {
-        toast.success('✅ Payment recorded successfully');
+        toast.success('Payment recorded successfully');
         setShowPaymentModal(false);
         fetchPurchases();
         fetchStats();
       } else {
-        toast.error(response?.error || '❌ Failed to record payment');
+        toast.error(response?.error || 'Failed to record payment');
       }
     } catch (error) {
       console.error('Payment error:', error);
-      toast.error('❌ Network error recording payment');
+      toast.error('Network error recording payment');
     }
   };
 
   // Handle delete purchase (admin only)
   const handleDeletePurchase = async (purchase) => {
     if (!isAdmin) {
-      toast.error('❌ Only admins can delete purchases');
+      toast.error('Only admins can delete purchases');
       return;
     }
     
@@ -349,29 +354,29 @@ const Purchases = () => {
     try {
       const response = await PurchaseService.delete(purchase.id);
       if (response?.success) {
-        toast.success('✅ Purchase deleted');
+        toast.success('Purchase deleted');
         fetchPurchases();
         fetchStats();
       } else {
-        toast.error(response?.error || '❌ Failed to delete purchase');
+        toast.error(response?.error || 'Failed to delete purchase');
       }
     } catch (error) {
       console.error('Delete purchase error:', error);
-      toast.error('❌ Network error deleting purchase');
+      toast.error('Network error deleting purchase');
     }
   };
 
   // Get type badge style
   const getTypeBadge = (type) => {
     return type === 'credit' 
-      ? { label: '📝 Credit', class: 'bg-blue-100 text-blue-700 border-blue-200' }
-      : { label: '💵 Cash', class: 'bg-green-100 text-green-700 border-green-200' };
+      ? { icon: FaFileInvoiceDollar, label: 'Credit', class: 'bg-blue-100 text-blue-700 border-blue-200' }
+      : { icon: FaMoneyBillWave, label: 'Cash', class: 'bg-green-100 text-green-700 border-green-200' };
   };
 
-  // ✅ FIXED: Get payment status with clear exceed/advance display
+  // Get payment status with clear exceed/advance display
   const getPaymentStatus = (purchase) => {
     if (purchase.bill_type === 'cash') {
-      return { label: '✓ Paid', class: 'bg-green-100 text-green-700' };
+      return { icon: FaCheckCircle, label: 'Paid', class: 'bg-green-100 text-green-700' };
     }
     
     const bill = parseFloat(purchase.bill_amount) || 0;
@@ -382,19 +387,20 @@ const Purchases = () => {
       // Exceed/Advance payment
       const exceed = paid - bill;
       return { 
-        label: `⚡ Exceed +${formatLKR(exceed)}`, 
+        icon: FaBolt,
+        label: `Exceed +${formatLKR(exceed)}`, 
         class: 'bg-cyan-100 text-cyan-700 border-cyan-200 border' 
       };
     } else if (outstanding <= 0.01) {
-      return { label: '✓ Fully Paid', class: 'bg-green-100 text-green-700 border-green-200 border' };
+      return { icon: FaCheckCircle, label: 'Fully Paid', class: 'bg-green-100 text-green-700 border-green-200 border' };
     } else if (paid > 0) {
-      return { label: '◐ Partial', class: 'bg-amber-100 text-amber-700 border-amber-200 border' };
+      return { icon: FaAdjust, label: 'Partial', class: 'bg-amber-100 text-amber-700 border-amber-200 border' };
     } else {
-      return { label: '○ Unpaid', class: 'bg-red-100 text-red-700 border-red-200 border' };
+      return { icon: FaTimesCircle, label: 'Unpaid', class: 'bg-red-100 text-red-700 border-red-200 border' };
     }
   };
 
-  // ✅ FIXED: Get balance display with clear exceed/advance support
+  // Get balance display with clear exceed/advance support
   const getBalanceDisplay = (purchase) => {
     if (purchase.bill_type === 'cash') {
       return { 
@@ -418,7 +424,7 @@ const Purchases = () => {
       };
     } else if (outstanding <= 0.01) {
       return { 
-        text: '✓ Settled', 
+        text: 'Settled', 
         class: 'text-green-600 font-bold',
         tooltip: 'Fully paid'
       };
@@ -514,17 +520,19 @@ const Purchases = () => {
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1">
                 <label className="block text-xs font-medium text-gray-500 mb-1">Search</label>
-                <div className="relative">
+                <div className="relative flex items-center">
                   <input
                     type="text"
                     value={filters.search}
                     onChange={(e) => setFilters({...filters, search: e.target.value})}
                     placeholder="Search by title or notes..."
-                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-2 h-10 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
-                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
+                  <div className="absolute left-3 flex items-center justify-center pointer-events-none">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
                 </div>
               </div>
               
@@ -536,8 +544,8 @@ const Purchases = () => {
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">All Types</option>
-                  <option value="credit">📝 Credit</option>
-                  <option value="cash">💵 Cash</option>
+                  <option value="credit">Credit</option>
+                  <option value="cash">Cash</option>
                 </select>
               </div>
               
@@ -681,9 +689,15 @@ const Purchases = () => {
                             <p className="text-xs text-gray-400 mt-0.5">ID: #{purchase.id}</p>
                           </td>
                           <td className="px-4 py-3">
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${typeBadge.class}`}>
-                              {typeBadge.label}
-                            </span>
+                            {(() => {
+                              const TypeIcon = typeBadge.icon;
+                              return (
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${typeBadge.class}`}>
+                                  {TypeIcon && <TypeIcon className="w-3 h-3" />}
+                                  <span>{typeBadge.label}</span>
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td className="px-4 py-3 text-right">
                             <p className="font-bold text-gray-900 text-sm">{formatLKR(purchase.bill_amount)}</p>
@@ -701,9 +715,15 @@ const Purchases = () => {
                             <p className="text-xs text-gray-500">Uploaded: {formatDate(purchase.uploaded_at)}</p>
                           </td>
                           <td className="px-4 py-3 text-center">
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold border ${paymentStatus.class}`}>
-                              {paymentStatus.label}
-                            </span>
+                            {(() => {
+                              const StatusIcon = paymentStatus.icon;
+                              return (
+                                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold border ${paymentStatus.class}`}>
+                                  {StatusIcon && <StatusIcon className="w-3 h-3" />}
+                                  <span>{paymentStatus.label}</span>
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-center gap-1">
@@ -715,7 +735,7 @@ const Purchases = () => {
                                   className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
                                   title="View bill"
                                 >
-                                  📄
+                                  <FaFileAlt className="w-3.5 h-3.5" />
                                 </a>
                               )}
                               {purchase.bill_type === 'credit' && parseFloat(purchase.outstanding_amount) > 0 && (
@@ -724,7 +744,7 @@ const Purchases = () => {
                                   className="p-1.5 text-green-600 hover:bg-green-50 rounded transition-colors"
                                   title="Record payment"
                                 >
-                                  💰
+                                  <FaDollarSign className="w-3.5 h-3.5" />
                                 </button>
                               )}
                               {isAdmin && (
@@ -734,14 +754,14 @@ const Purchases = () => {
                                     className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
                                     title="Edit purchase"
                                   >
-                                    ✏️
+                                    <FaEdit className="w-3.5 h-3.5" />
                                   </button>
                                   <button
                                     onClick={() => handleDeletePurchase(purchase)}
                                     className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
                                     title="Delete purchase"
                                   >
-                                    🗑️
+                                    <FaTrash className="w-3.5 h-3.5" />
                                   </button>
                                 </>
                               )}
@@ -750,7 +770,7 @@ const Purchases = () => {
                                 className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors"
                                 title="View details"
                               >
-                                👁️
+                                <FaEye className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           </td>
@@ -769,7 +789,10 @@ const Purchases = () => {
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setViewingPurchase(null)}>
             <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6" onClick={e => e.stopPropagation()}>
               <div className="flex justify-between items-center mb-4 pb-4 border-b">
-                <h3 className="text-lg font-bold text-gray-900">📦 Purchase Details</h3>
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <FaBox className="text-blue-600" />
+                  <span>Purchase Details</span>
+                </h3>
                 <button onClick={() => setViewingPurchase(null)} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
               </div>
               
@@ -781,9 +804,15 @@ const Purchases = () => {
                 
                 <div className="flex justify-between items-center py-2 border-b border-gray-100">
                   <span className="text-sm font-medium text-gray-500">Type</span>
-                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${getTypeBadge(viewingPurchase.bill_type).class}`}>
-                    {getTypeBadge(viewingPurchase.bill_type).label}
-                  </span>
+                  {(() => {
+                    const TypeBadgeIcon = getTypeBadge(viewingPurchase.bill_type).icon;
+                    return (
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${getTypeBadge(viewingPurchase.bill_type).class}`}>
+                        {TypeBadgeIcon && <TypeBadgeIcon className="w-3 h-3" />}
+                        <span>{getTypeBadge(viewingPurchase.bill_type).label}</span>
+                      </span>
+                    );
+                  })()}
                 </div>
                 
                 <div className="grid grid-cols-3 gap-4 py-2 border-b border-gray-100">
@@ -806,8 +835,9 @@ const Purchases = () => {
                 {/* Show exceed/advance details if applicable */}
                 {viewingPurchase.bill_type === 'credit' && parseFloat(viewingPurchase.paid_amount) > parseFloat(viewingPurchase.bill_amount) && (
                   <div className="p-3 bg-cyan-50 rounded-lg border border-cyan-200">
-                    <p className="text-sm text-cyan-800 font-medium">
-                      ⚡ Advance Payment: {formatLKR(parseFloat(viewingPurchase.paid_amount) - parseFloat(viewingPurchase.bill_amount))}
+                    <p className="text-sm text-cyan-800 font-medium flex items-center gap-1.5">
+                      <FaBolt className="text-cyan-600 shrink-0" />
+                      <span>Advance Payment: {formatLKR(parseFloat(viewingPurchase.paid_amount) - parseFloat(viewingPurchase.bill_amount))}</span>
                     </p>
                     <p className="text-xs text-cyan-600 mt-1">
                       Customer paid more than the bill amount
@@ -836,7 +866,8 @@ const Purchases = () => {
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors text-sm font-medium"
                     >
-                      📄 View/Download Bill
+                      <FaFileAlt className="w-4 h-4" />
+                      View/Download Bill
                     </a>
                   </div>
                 )}
@@ -851,7 +882,8 @@ const Purchases = () => {
                     }}
                     className="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
                   >
-                    💰 Record Payment
+                    <FaDollarSign className="w-4 h-4" />
+                    Record Payment
                   </button>
                 )}
                 <button
@@ -865,13 +897,23 @@ const Purchases = () => {
           </div>
         )}
         
-        {/* Purchase Form Modal - FIXED */}
+        {/* Purchase Form Modal */}
         {showForm && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
             <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
               <div className="flex justify-between items-center mb-4 pb-4 border-b">
-                <h3 className="text-lg font-bold text-gray-900">
-                  {editingPurchase ? '✏️ Edit Purchase' : '📦 Add New Purchase'}
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  {editingPurchase ? (
+                    <>
+                      <FaEdit className="text-blue-600" />
+                      <span>Edit Purchase</span>
+                    </>
+                  ) : (
+                    <>
+                      <FaBox className="text-blue-600" />
+                      <span>Add New Purchase</span>
+                    </>
+                  )}
                 </h3>
                 <button onClick={() => { setShowForm(false); resetForm(); }} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
               </div>
@@ -904,8 +946,8 @@ const Purchases = () => {
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
                     >
-                      <option value="cash">💵 Cash</option>
-                      <option value="credit">📝 Credit</option>
+                      <option value="cash">Cash</option>
+                      <option value="credit">Credit</option>
                     </select>
                   </div>
                   
@@ -992,18 +1034,30 @@ const Purchases = () => {
                             ? 'text-red-600' 
                             : 'text-green-600'
                       }`}>
-                        {parseFloat(formData.outstanding_amount) < 0 
-                          ? `⚡ Exceed +${formatLKR(Math.abs(parseFloat(formData.outstanding_amount)))}` 
-                          : parseFloat(formData.outstanding_amount) > 0 
-                            ? '⏳ Amount due' 
-                            : '✓ Fully settled'}
+                        {parseFloat(formData.outstanding_amount) < 0 ? (
+                          <span className="flex items-center gap-1">
+                            <FaBolt className="w-3 h-3 text-cyan-600 shrink-0" />
+                            <span>Exceed +{formatLKR(Math.abs(parseFloat(formData.outstanding_amount)))}</span>
+                          </span>
+                        ) : parseFloat(formData.outstanding_amount) > 0 ? (
+                          <span className="flex items-center gap-1">
+                            <FaClock className="w-3 h-3 text-red-600 shrink-0" />
+                            <span>Amount due</span>
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1">
+                            <FaCheckCircle className="w-3 h-3 text-green-600 shrink-0" />
+                            <span>Fully settled</span>
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
                 ) : (
                   <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                    <p className="text-sm text-green-800 font-medium">
-                      ✅ Cash purchase - Full amount marked as paid
+                    <p className="text-sm text-green-800 font-medium flex items-center gap-2">
+                      <FaCheckCircle className="text-green-600 shrink-0" />
+                      <span>Cash purchase - Full amount marked as paid</span>
                     </p>
                   </div>
                 )}
@@ -1025,7 +1079,10 @@ const Purchases = () => {
                     <div className="space-y-1">
                       {formData.bill_file ? (
                         <>
-                          <p className="text-sm text-green-600 font-medium">{fileMessage}</p>
+                          <p className="text-sm text-green-600 font-medium flex items-center justify-center gap-1.5">
+                            <FaPaperclip className="text-green-600" />
+                            <span>{fileMessage}</span>
+                          </p>
                           <p className="text-xs text-gray-400">Click to change file</p>
                         </>
                       ) : (
@@ -1042,9 +1099,10 @@ const Purchases = () => {
                     <button
                       type="button"
                       onClick={handleRemoveFile}
-                      className="mt-2 text-xs text-red-600 hover:text-red-700 font-medium"
+                      className="mt-2 text-xs text-red-600 hover:text-red-700 font-medium flex items-center gap-1"
                     >
-                      🗑️ Remove file
+                      <FaTrash className="w-3 h-3" />
+                      <span>Remove file</span>
                     </button>
                   )}
                   
@@ -1090,7 +1148,17 @@ const Purchases = () => {
                         </svg>
                         Saving...
                       </>
-                    ) : editingPurchase ? '✅ Update Purchase' : '💾 Save Purchase'}
+                    ) : editingPurchase ? (
+                      <>
+                        <FaCheck className="w-4 h-4" />
+                        <span>Update Purchase</span>
+                      </>
+                    ) : (
+                      <>
+                        <FaSave className="w-4 h-4" />
+                        <span>Save Purchase</span>
+                      </>
+                    )}
                   </button>
                   <button
                     type="button"
@@ -1110,7 +1178,10 @@ const Purchases = () => {
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowPaymentModal(false)}>
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
               <div className="flex justify-between items-center mb-4 pb-4 border-b">
-                <h3 className="text-lg font-bold text-gray-900">💰 Record Payment</h3>
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <FaDollarSign className="text-green-600" />
+                  <span>Record Payment</span>
+                </h3>
                 <button onClick={() => setShowPaymentModal(false)} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
               </div>
               
@@ -1151,7 +1222,8 @@ const Purchases = () => {
                     type="submit"
                     className="flex-1 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
                   >
-                    ✅ Record Payment
+                    <FaCheck className="w-4 h-4" />
+                    <span>Record Payment</span>
                   </button>
                   <button
                     type="button"
