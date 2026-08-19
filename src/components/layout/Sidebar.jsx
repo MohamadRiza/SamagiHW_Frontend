@@ -36,14 +36,7 @@ const getMenuItems = (role) => [
   },
   { label: 'Expenses', icon: <FaMoneyBillWave />, path: '/expenses', roles: ['admin'] },
   { label: 'Cheques', icon: <FaMoneyCheck />, path: '/cheques', roles: ['admin', 'staff'] },
-  {
-    label: 'Reports', icon: <FaChartBar />, path: '/reports', roles: ['admin', 'staff'],
-    children: [
-      { label: 'Today Summary', path: '/reports/today', roles: ['admin', 'staff'] },
-      { label: 'Sales Report', path: '/reports/sales', roles: ['admin'] },
-      { label: 'Stock Report', path: '/reports/stock', roles: ['admin'] },
-    ]
-  },
+  { label: 'Reports', icon: <FaChartBar />, path: '/reports', roles: ['admin', 'staff'] },
   { label: 'Settings', icon: <FaCog />, path: '/settings', roles: ['admin'] },
 ];
 
