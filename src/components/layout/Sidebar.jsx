@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useCart } from '../../contexts/CartContext';
 import SidebarHeader from './SidebarHeader';
 import SidebarItem from './SidebarItem';
 import SidebarFooter from './SidebarFooter';
@@ -15,16 +16,10 @@ import {
   FaCog 
 } from 'react-icons/fa';
 
-const getMenuItems = (role) => [
+const getMenuItems = (role, cartBadge) => [
   { label: 'Dashboard', icon: <FaHome />, path: '/dashboard', roles: ['admin', 'staff'] },
-  {
-    label: 'Billing', icon: <FaCashRegister />, roles: ['admin', 'staff'],
-    children: [
-      { label: 'Cash Bill', path: '/billing/cash', roles: ['admin', 'staff'] },
-      { label: 'Credit Bill', path: '/billing/credit', roles: ['admin', 'staff'] },
-    ]
-  },
-  { label: 'Stock Management', icon: <FaBox />, path: '/stock', roles: ['admin'] },
+  { label: 'Billing', icon: <FaCashRegister />, path: '/billing/cash', roles: ['admin', 'staff'], badge: cartBadge },
+  { label: 'Stock Management', icon: <FaBox />, path: '/stock', roles: ['admin', 'staff'] },
   { label: 'Purchases', icon: <FaShoppingCart />, path: '/purchases', roles: ['admin', 'staff'] },
   {
     label: 'Credit Customers', icon: <FaUsers />, roles: ['admin', 'staff'],
@@ -42,6 +37,7 @@ const getMenuItems = (role) => [
 
 const Sidebar = () => {
   const { user } = useAuth();
+  const { badgeText } = useCart();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
@@ -102,7 +98,7 @@ const Sidebar = () => {
     if (!isDesktop) setMobileOpen(false);
   }, [isDesktop]);
 
-  const menuItems = getMenuItems(user?.role);
+  const menuItems = useMemo(() => getMenuItems(user?.role, badgeText), [user?.role, badgeText]);
 
   return (
     <>

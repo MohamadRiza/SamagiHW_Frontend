@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Sidebar } from '../components/layout';
 import ChequeService from '../services/cheque.service';
+import ConfirmationModal from '../components/common/ConfirmationModal';
 import { Toaster, toast } from 'react-hot-toast';
 import {
   FaMoneyCheckAlt, FaPlus, FaEdit, FaTrash, FaEye, FaSyncAlt,
@@ -17,6 +18,7 @@ const Cheques = () => {
   const [cheques, setCheques] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [chequeToDelete, setChequeToDelete] = useState(null);
   const [companySearch, setCompanySearch] = useState('');
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
   const companyInputRef = useRef(null);
@@ -299,18 +301,18 @@ const Cheques = () => {
   };
 
   // Handle delete cheque (admin only)
-  const handleDeleteCheque = async (cheque) => {
+  const handleDeleteCheque = (cheque) => {
     if (!isAdmin) {
       toast.error('Only admins can delete cheques');
       return;
     }
-    
-    if (!window.confirm(`Are you sure you want to delete this cheque?\n\nCompany: ${cheque.company_name}\nNumber: ${cheque.cheque_number}\nAmount: ${formatLKR(cheque.amount)}`)) {
-      return;
-    }
-    
+    setChequeToDelete(cheque);
+  };
+
+  const handleConfirmDeleteCheque = async () => {
+    if (!chequeToDelete?.id) return;
     try {
-      const response = await ChequeService.delete(cheque.id);
+      const response = await ChequeService.delete(chequeToDelete.id);
       if (response?.success) {
         toast.success('Cheque deleted');
         fetchCheques();
@@ -320,6 +322,11 @@ const Cheques = () => {
     } catch (error) {
       console.error('Delete cheque error:', error);
       toast.error('Network error deleting cheque');
+    } finally {
+      setChequeToDelete(null);
+      setTimeout(() => {
+        try { window.focus(); } catch (e) {}
+      }, 50);
     }
   };
 
@@ -1031,6 +1038,25 @@ const Cheques = () => {
             </div>
           </div>
         )}
+
+        {/* Delete Cheque Confirmation Modal */}
+        <ConfirmationModal
+          isOpen={Boolean(chequeToDelete)}
+          onClose={() => {
+            setChequeToDelete(null);
+            setTimeout(() => {
+              try { window.focus(); } catch (e) {}
+            }, 50);
+          }}
+          onConfirm={handleConfirmDeleteCheque}
+          title="Delete Cheque"
+          message="Are you sure you want to delete this cheque record? This action cannot be undone."
+          itemName={chequeToDelete ? `${chequeToDelete.company_name} - #${chequeToDelete.cheque_number}` : ''}
+          itemId={chequeToDelete?.id}
+          confirmText="Delete Cheque"
+          cancelText="Cancel"
+          confirmVariant="danger"
+        />
       </main>
     </div>
   );

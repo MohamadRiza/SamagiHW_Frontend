@@ -76,7 +76,7 @@ const SidebarItem = memo(({ item, collapsed, role, isDesktop, onNavigate }) => {
     <NavLink
       to={item.path}
       className={({ isActive }) =>
-        `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 mb-1
+        `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 mb-1 relative group
         ${isActive 
           ? 'bg-primary-700/40 text-white border-l-2 border-primary-400' 
           : 'text-sidebar-text hover:bg-sidebar-hover hover:text-sidebar-textHover'
@@ -85,11 +85,27 @@ const SidebarItem = memo(({ item, collapsed, role, isDesktop, onNavigate }) => {
         focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-inset
         `
       }
-      title={collapsed ? item.label : undefined}
+      title={collapsed ? (item.badge ? `${item.label} (${item.badge} items in cart)` : item.label) : undefined}
       onClick={onNavigate}
     >
-      <span className={`text-lg flex-shrink-0 ${isActive ? 'text-primary-300' : ''}`}>{item.icon}</span>
-      {!collapsed && <span className="font-medium text-sm truncate">{item.label}</span>}
+      <div className="relative flex items-center justify-center flex-shrink-0">
+        <span className={`text-lg ${isActive ? 'text-primary-300' : ''}`}>{item.icon}</span>
+        {collapsed && item.badge && (
+          <span className="absolute -top-2 -right-2.5 bg-emerald-500 text-white text-[10px] font-extrabold px-1 min-w-[16px] h-4 rounded-full flex items-center justify-center shadow-md animate-pulse">
+            {item.badge}
+          </span>
+        )}
+      </div>
+      {!collapsed && (
+        <div className="flex items-center justify-between flex-1 min-w-0">
+          <span className="font-medium text-sm truncate">{item.label}</span>
+          {item.badge && (
+            <span className="ml-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center justify-center transition-all animate-in fade-in">
+              {item.badge}
+            </span>
+          )}
+        </div>
+      )}
     </NavLink>
   );
 });

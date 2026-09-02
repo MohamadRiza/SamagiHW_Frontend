@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Sidebar } from '../components/layout';
 import ExpenseService from '../services/expense.service';
 import ExpenseCategoryService from '../services/expenseCategory.service';
+import ConfirmationModal from '../components/common/ConfirmationModal';
 import { Toaster, toast } from 'react-hot-toast';
 import {
   FaPlus, FaEdit, FaTrash, FaEye, FaSyncAlt,
@@ -40,6 +41,7 @@ const Expenses = () => {
     expense_date: ''
   });
   const [formLoading, setFormLoading] = useState(false);
+  const [expenseToDelete, setExpenseToDelete] = useState(null);
   
   // ✅ NEW: View details modal state
   const [viewingExpense, setViewingExpense] = useState(null);
@@ -259,18 +261,18 @@ const Expenses = () => {
   };
 
   // Handle delete expense (admin only)
-  const handleDeleteExpense = async (expense) => {
+  const handleDeleteExpense = (expense) => {
     if (!isAdmin) {
       toast.error('Only admins can delete expenses');
       return;
     }
-    
-    if (!window.confirm(`Are you sure you want to delete this expense?\n\nReason: ${expense.reason}\nAmount: ${formatLKR(expense.amount)}`)) {
-      return;
-    }
-    
+    setExpenseToDelete(expense);
+  };
+
+  const handleConfirmDeleteExpense = async () => {
+    if (!expenseToDelete?.id) return;
     try {
-      const response = await ExpenseService.delete(expense.id);
+      const response = await ExpenseService.delete(expenseToDelete.id);
       if (response?.success) {
         toast.success('Expense deleted');
         fetchExpenses();
@@ -281,6 +283,11 @@ const Expenses = () => {
     } catch (error) {
       console.error('Delete expense error:', error);
       toast.error('Network error deleting expense');
+    } finally {
+      setExpenseToDelete(null);
+      setTimeout(() => {
+        try { window.focus(); } catch (e) {}
+      }, 50);
     }
   };
 
@@ -994,6 +1001,25 @@ const Expenses = () => {
             </div>
           </div>
         )}
+
+        {/* Delete Expense Confirmation Modal */}
+        <ConfirmationModal
+          isOpen={Boolean(expenseToDelete)}
+          onClose={() => {
+            setExpenseToDelete(null);
+            setTimeout(() => {
+              try { window.focus(); } catch (e) {}
+            }, 50);
+          }}
+          onConfirm={handleConfirmDeleteExpense}
+          title="Delete Expense"
+          message="Are you sure you want to delete this expense? This action cannot be undone."
+          itemName={expenseToDelete?.reason}
+          itemId={expenseToDelete?.id}
+          confirmText="Delete Expense"
+          cancelText="Cancel"
+          confirmVariant="danger"
+        />
       </main>
     </div>
   );

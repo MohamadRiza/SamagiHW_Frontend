@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Sidebar } from '../components/layout';
 import PurchaseService from '../services/purchase.service';
+import ConfirmationModal from '../components/common/ConfirmationModal';
 import { Toaster, toast } from 'react-hot-toast';
 import {
   FaPlus, FaEdit, FaTrash, FaEye, FaFileAlt, FaFileInvoiceDollar,
@@ -17,6 +18,7 @@ const Purchases = () => {
   const [purchases, setPurchases] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [purchaseToDelete, setPurchaseToDelete] = useState(null);
   
   // Filters
   const [filters, setFilters] = useState({
@@ -341,18 +343,18 @@ const Purchases = () => {
   };
 
   // Handle delete purchase (admin only)
-  const handleDeletePurchase = async (purchase) => {
+  const handleDeletePurchase = (purchase) => {
     if (!isAdmin) {
       toast.error('Only admins can delete purchases');
       return;
     }
-    
-    if (!window.confirm(`Are you sure you want to delete this purchase?\n\nTitle: ${purchase.title}\nAmount: ${formatLKR(purchase.bill_amount)}`)) {
-      return;
-    }
-    
+    setPurchaseToDelete(purchase);
+  };
+
+  const handleConfirmDeletePurchase = async () => {
+    if (!purchaseToDelete?.id) return;
     try {
-      const response = await PurchaseService.delete(purchase.id);
+      const response = await PurchaseService.delete(purchaseToDelete.id);
       if (response?.success) {
         toast.success('Purchase deleted');
         fetchPurchases();
@@ -363,6 +365,11 @@ const Purchases = () => {
     } catch (error) {
       console.error('Delete purchase error:', error);
       toast.error('Network error deleting purchase');
+    } finally {
+      setPurchaseToDelete(null);
+      setTimeout(() => {
+        try { window.focus(); } catch (e) {}
+      }, 50);
     }
   };
 
@@ -1237,6 +1244,25 @@ const Purchases = () => {
             </div>
           </div>
         )}
+
+        {/* Delete Purchase Confirmation Modal */}
+        <ConfirmationModal
+          isOpen={Boolean(purchaseToDelete)}
+          onClose={() => {
+            setPurchaseToDelete(null);
+            setTimeout(() => {
+              try { window.focus(); } catch (e) {}
+            }, 50);
+          }}
+          onConfirm={handleConfirmDeletePurchase}
+          title="Delete Purchase"
+          message="Are you sure you want to delete this purchase bill? This action cannot be undone."
+          itemName={purchaseToDelete?.title}
+          itemId={purchaseToDelete?.id}
+          confirmText="Delete Purchase"
+          cancelText="Cancel"
+          confirmVariant="danger"
+        />
       </main>
     </div>
   );

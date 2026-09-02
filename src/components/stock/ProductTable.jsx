@@ -1,14 +1,15 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { FaEdit, FaPrint, FaTrash, FaEye } from "react-icons/fa";
+import { FaEdit, FaPrint, FaTrash, FaEye, FaShoppingCart, FaChevronRight } from "react-icons/fa";
 import BarcodeGenerator from "./BarcodeGenerator";
 
 const ACTION_MENU_OPTIONS = [
+  { key: 'cart',   label: 'Add to Cart',    icon: FaShoppingCart, shortcut: 'C', color: 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200' },
   { key: 'edit',   label: 'Edit Product',   icon: FaEdit,  shortcut: 'E', color: 'text-blue-700  bg-blue-50  hover:bg-blue-100  border-blue-200'  },
   { key: 'print',  label: 'Print Barcode',  icon: FaPrint, shortcut: 'P', color: 'text-purple-700 bg-purple-50 hover:bg-purple-100 border-purple-200' },
   { key: 'delete', label: 'Delete Product', icon: FaTrash, shortcut: 'D', color: 'text-red-700    bg-red-50   hover:bg-red-100   border-red-200'   },
 ];
 
-const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) => {
+const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, onAddToCart, loading }) => {
   const [searchTerm, setSearchTerm]         = useState("");
   const [filterCredit, setFilterCredit]     = useState(false);
   const [selectedIndex, setSelectedIndex]   = useState(-1);
@@ -20,56 +21,106 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
   const tableRef      = useRef(null);
   const actionMenuRef = useRef(null);
 
-  // ── Smart Search ─────────────────────────────────────────────────────────
+  // ── Smart Multi-Token Search ─────────────────────────────────────────────
   // Rules:
-  //   • If query starts with '#' → match only by primary key (exact, user must type '#')
-  //   • Otherwise → match item_name, barcode, or any sub_brand (case-insensitive)
-  //     Also handles combined "BRAND ITEM" or "ITEM BRAND" patterns
+  //   • If query starts with '#' → match only by primary key id (e.g. #12)
+  //   • Otherwise → split query into words (tokens). Every token must match somewhere
+  //     in the product (item_name, company, sub_brands, short_form, barcode, or ID).
+  //   • Handles any word order (e.g. "dell latitude 520", "keyboard dell", "520 dell").
+  //   • Handles extra whitespace and flexible alphanumeric matching (e.g. "D-520" vs "D520").
+  //   • Ranks matches by search relevance so the best results appear first.
   const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
-      // Credit filter
-      const matchesCredit = !filterCredit || p.is_credit_item;
-      if (!matchesCredit) return false;
+    // Credit filter
+    const baseList = filterCredit ? products.filter((p) => p.is_credit_item) : products;
 
-      if (!searchTerm) return true;
+    if (!searchTerm || !searchTerm.trim()) {
+      return baseList;
+    }
 
-      const raw = searchTerm.trim();
+    const raw = searchTerm.trim();
 
-      // ── Primary key search: must start with '#' ──
-      if (raw.startsWith('#')) {
-        const idStr = raw.slice(1).trim();
-        if (idStr === '') return false; // '#' alone → no match
-        return String(p.id) === idStr;
-      }
+    // ── Primary key search: must start with '#' ──
+    if (raw.startsWith('#')) {
+      const idStr = raw.slice(1).trim();
+      if (idStr === '') return []; // '#' alone → no match
+      return baseList.filter((p) => String(p.id) === idStr);
+    }
 
-      // ── Normal search ──
-      const q = raw.toLowerCase();
+    const q = raw.toLowerCase();
+    const tokens = q.split(/\s+/).filter(Boolean);
+    if (tokens.length === 0) return baseList;
 
-      // Match item_name
-      if (p.item_name?.toLowerCase().includes(q)) return true;
+    // Helper to strip non-alphanumeric chars for flexible matching (e.g. "D-520" <-> "D520")
+    const cleanAlphanumeric = (str) => (str ? String(str).toLowerCase().replace(/[^a-z0-9]/g, '') : '');
 
-      // Match barcode
-      if (p.barcode?.toLowerCase().includes(q)) return true;
+    const matched = [];
 
-      // Match any of the sub_brands
-      if (p.sub_brands) {
-        const brands = p.sub_brands.split(',').map((b) => b.trim().toLowerCase());
-        // Direct brand match
-        if (brands.some((b) => b.includes(q))) return true;
+    for (let i = 0; i < baseList.length; i++) {
+      const p = baseList[i];
 
-        // Combined search: "DELL KEYBOARD" or "KEYBOARD DELL"
-        // Split query into words and check if item_name matches one word and brand matches another
-        const words = q.split(/\s+/);
-        if (words.length >= 2) {
-          const nameMatches = (word) => p.item_name?.toLowerCase().includes(word);
-          const brandMatches = (word) => brands.some((b) => b.includes(word));
-          // At least one word matches name AND at least one word matches a brand
-          if (words.some(nameMatches) && words.some(brandMatches)) return true;
+      const name = (p.item_name || '').toLowerCase();
+      const barcode = (p.barcode || '').toLowerCase();
+      const company = (p.company || '').toLowerCase();
+      const subBrands = (p.sub_brands || '').toLowerCase();
+      const shortForm = (p.short_form || '').toLowerCase();
+      const idStr = String(p.id || '');
+
+      // Unified searchable content
+      const combined = `${name} ${barcode} ${company} ${subBrands} ${shortForm} #${idStr} ${idStr}`;
+      const combinedClean = cleanAlphanumeric(combined);
+
+      // Check if ALL query tokens are present in the product's attributes
+      let allTokensMatch = true;
+      for (let j = 0; j < tokens.length; j++) {
+        const token = tokens[j];
+        const tokenClean = cleanAlphanumeric(token);
+
+        const inCombined = combined.includes(token);
+        const inCombinedClean = tokenClean.length > 0 && combinedClean.includes(tokenClean);
+
+        if (!inCombined && !inCombinedClean) {
+          allTokensMatch = false;
+          break;
         }
       }
 
-      return false;
-    });
+      if (allTokensMatch) {
+        // Calculate relevance score
+        let score = 0;
+
+        // Exact match bonuses
+        if (name === q || barcode === q) {
+          score += 1000;
+        } else if (name.startsWith(q)) {
+          score += 500;
+        } else if (name.includes(q)) {
+          score += 300;
+        }
+
+        // Exact brand/company bonuses
+        if (company === q || subBrands.split(',').some((b) => b.trim().toLowerCase() === q)) {
+          score += 200;
+        } else if (subBrands.includes(q) || company.includes(q)) {
+          score += 100;
+        }
+
+        // Per-token location weights
+        tokens.forEach((tok) => {
+          if (name.includes(tok)) score += 30;
+          if (barcode.includes(tok)) score += 20;
+          if (company.includes(tok)) score += 15;
+          if (subBrands.includes(tok)) score += 15;
+          if (shortForm.includes(tok)) score += 10;
+        });
+
+        matched.push({ product: p, score, originalIndex: i });
+      }
+    }
+
+    // Sort by score DESC, then original order
+    matched.sort((a, b) => b.score - a.score || a.originalIndex - b.originalIndex);
+
+    return matched.map((m) => m.product);
   }, [products, searchTerm, filterCredit]);
 
   // Reset selection when list changes
@@ -85,13 +136,28 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
     }
   }, [selectedIndex]);
 
-  // Focus action menu on open
+  // Focus action menu on open; refocus selected row when menu closes
   useEffect(() => {
     if (actionProduct) {
       setActionMenuIdx(0);
       setTimeout(() => actionMenuRef.current?.focus(), 30);
+    } else if (selectedIndex >= 0 && tableRef.current) {
+      const activeTag = document.activeElement?.tagName;
+      if (activeTag !== 'INPUT' && activeTag !== 'TEXTAREA' && activeTag !== 'SELECT') {
+        const rows = tableRef.current.querySelectorAll("tbody tr[data-row]");
+        rows[selectedIndex]?.focus();
+      }
     }
   }, [actionProduct]);
+
+  // Auto-focus search input when component mounts
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      searchRef.current?.focus();
+      searchRef.current?.select();
+    }, 60);
+    return () => clearTimeout(timer);
+  }, []);
 
   // ── Helpers ──────────────────────────────────────────────────────────────
   const getFinalPrice = (p) =>
@@ -107,13 +173,13 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
 
   const dispatchAction = useCallback((key, product) => {
     setActionProduct(null);
-    setSelectedIndex(-1);
     setTimeout(() => {
+      if (key === 'cart')   onAddToCart?.(product);
       if (key === 'edit')   onEdit(product);
       if (key === 'print')  onPrintBarcode({ ...product, final_price: getFinalPrice(product) });
-      if (key === 'delete') onDelete(product.id);
+      if (key === 'delete') onDelete(product);
     }, 0);
-  }, [onEdit, onPrintBarcode, onDelete]);
+  }, [onAddToCart, onEdit, onPrintBarcode, onDelete]);
 
   // ── Global keyboard handler ───────────────────────────────────────────────
   useEffect(() => {
@@ -141,10 +207,9 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
         e.preventDefault();
         if (filteredProducts.length > 0) {
           setSelectedIndex(0);
-          // focus the first row so subsequent arrows work via row handler
           setTimeout(() => {
             tableRef.current?.querySelector('tbody tr[data-row]')?.focus();
-          }, 0);
+          }, 10);
         }
         return;
       }
@@ -157,19 +222,34 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
         e.preventDefault();
         setSelectedIndex((i) => {
           if (filteredProducts.length === 0) return -1;
-          return i === -1 ? 0 : Math.min(i + 1, filteredProducts.length - 1);
+          const next = i === -1 ? 0 : Math.min(i + 1, filteredProducts.length - 1);
+          setTimeout(() => {
+            const rows = tableRef.current?.querySelectorAll('tbody tr[data-row]');
+            rows?.[next]?.focus();
+          }, 10);
+          return next;
         });
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         setSelectedIndex((i) => {
-          if (i <= 0) return 0;
-          return i - 1;
+          if (i <= 0) {
+            searchRef.current?.focus();
+            searchRef.current?.select();
+            return -1;
+          }
+          const prev = i - 1;
+          setTimeout(() => {
+            const rows = tableRef.current?.querySelectorAll('tbody tr[data-row]');
+            rows?.[prev]?.focus();
+          }, 10);
+          return prev;
         });
-      } else if (e.key === 'Enter' && selectedIndex >= 0) {
+      } else if ((e.key === 'Enter' || e.key === 'ArrowRight') && selectedIndex >= 0) {
         e.preventDefault();
         setActionProduct(filteredProducts[selectedIndex]);
       } else if (e.key === 'Escape') {
         setSelectedIndex(-1);
+        searchRef.current?.focus();
       }
     };
 
@@ -185,20 +265,33 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setActionMenuIdx((i) => (i - 1 + ACTION_MENU_OPTIONS.length) % ACTION_MENU_OPTIONS.length);
-    } else if (e.key === 'Enter') {
+    } else if (e.key === 'Enter' || e.key === 'ArrowRight') {
       e.preventDefault();
       dispatchAction(ACTION_MENU_OPTIONS[actionMenuIdx].key, actionProduct);
-    } else if (e.key === 'Escape') {
+    } else if (e.key === 'Escape' || e.key === 'ArrowLeft') {
+      e.preventDefault();
       setActionProduct(null);
     } else {
       const opt = ACTION_MENU_OPTIONS.find(o => o.shortcut === e.key.toUpperCase());
-      if (opt) dispatchAction(opt.key, actionProduct);
+      if (opt) {
+        e.preventDefault();
+        dispatchAction(opt.key, actionProduct);
+      }
     }
   };
 
-  // ── Search field keyboard (Escape only — ArrowDown handled in global handler) ──
+  // ── Search field keyboard ──
   const handleSearchKeyDown = (e) => {
-    if (e.key === 'Escape') {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (filteredProducts.length > 0) {
+        setSelectedIndex(0);
+        setTimeout(() => {
+          const rows = tableRef.current?.querySelectorAll('tbody tr[data-row]');
+          rows?.[0]?.focus();
+        }, 10);
+      }
+    } else if (e.key === 'Escape') {
       setSearchTerm('');
       searchRef.current?.blur();
     }
@@ -260,11 +353,20 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
         </div>
 
         {/* Keyboard hint */}
-        <p className="mt-2 text-xs text-gray-400">
-          <kbd className="px-1 py-0.5 bg-gray-100 rounded text-gray-500">↑↓</kbd> navigate ·{' '}
-          <kbd className="px-1 py-0.5 bg-gray-100 rounded text-gray-500">Enter</kbd> actions ·{' '}
-          <kbd className="px-1 py-0.5 bg-gray-100 rounded text-gray-500">Esc</kbd> deselect ·{' '}
-          <kbd className="px-1 py-0.5 bg-gray-100 rounded text-gray-500">#5</kbd> search by ID
+        <p className="mt-2 text-xs text-gray-400 flex items-center gap-2 flex-wrap">
+          <span><kbd className="px-1 py-0.5 bg-gray-100 rounded text-gray-500 font-mono">↑↓</kbd> navigate rows</span>
+          <span>•</span>
+          <span><kbd className="px-1 py-0.5 bg-gray-100 rounded text-gray-500 font-mono">→</kbd> or <kbd className="px-1 py-0.5 bg-gray-100 rounded text-gray-500 font-mono">Enter</kbd> actions menu</span>
+          <span>•</span>
+          <span><kbd className="px-1 py-0.5 bg-gray-100 rounded text-gray-500 font-mono">C</kbd> cart</span>
+          <span>•</span>
+          <span><kbd className="px-1 py-0.5 bg-gray-100 rounded text-gray-500 font-mono">E</kbd> edit</span>
+          <span>•</span>
+          <span><kbd className="px-1 py-0.5 bg-gray-100 rounded text-gray-500 font-mono">P</kbd> print</span>
+          <span>•</span>
+          <span><kbd className="px-1 py-0.5 bg-gray-100 rounded text-gray-500 font-mono">#5</kbd> search ID</span>
+          <span>•</span>
+          <span><kbd className="px-1 py-0.5 bg-gray-100 rounded text-gray-500 font-mono">Esc</kbd> search bar</span>
         </p>
       </div>
 
@@ -317,34 +419,51 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
                     data-row
                     tabIndex={0}
                     onClick={() => setSelectedIndex(idx)}
+                    onMouseEnter={() => setSelectedIndex(idx)}
                     onDoubleClick={() => { setSelectedIndex(idx); setActionProduct(product); }}
                     onKeyDown={(e) => {
-                      // ArrowUp/Down: handled here (row is focused) AND prevented from
-                      // bubbling to the global window handler via the isInRow guard.
                       if (e.key === 'ArrowDown') {
                         e.preventDefault();
                         const next = Math.min(idx + 1, filteredProducts.length - 1);
                         setSelectedIndex(next);
-                        // Move DOM focus to the next row for continuous keyboard nav
                         const rows = tableRef.current?.querySelectorAll('tbody tr[data-row]');
                         rows?.[next]?.focus();
                       } else if (e.key === 'ArrowUp') {
                         e.preventDefault();
-                        const prev = Math.max(idx - 1, 0);
-                        setSelectedIndex(prev);
-                        const rows = tableRef.current?.querySelectorAll('tbody tr[data-row]');
-                        rows?.[prev]?.focus();
-                      } else if (e.key === 'Enter') {
+                        if (idx === 0) {
+                          setSelectedIndex(-1);
+                          searchRef.current?.focus();
+                          searchRef.current?.select();
+                        } else {
+                          const prev = Math.max(idx - 1, 0);
+                          setSelectedIndex(prev);
+                          const rows = tableRef.current?.querySelectorAll('tbody tr[data-row]');
+                          rows?.[prev]?.focus();
+                        }
+                      } else if (e.key === 'Enter' || e.key === 'ArrowRight') {
                         e.preventDefault();
+                        setSelectedIndex(idx);
                         setActionProduct(product);
+                      } else if (e.key.toLowerCase() === 'c') {
+                        e.preventDefault();
+                        onAddToCart?.(product);
+                      } else if (e.key.toLowerCase() === 'e') {
+                        e.preventDefault();
+                        onEdit?.(product);
+                      } else if (e.key.toLowerCase() === 'p') {
+                        e.preventDefault();
+                        onPrintBarcode?.({ ...product, final_price: finalPrice });
+                      } else if (e.key.toLowerCase() === 'd') {
+                        e.preventDefault();
+                        onDelete?.(product);
                       } else if (e.key === 'Escape') {
                         setSelectedIndex(-1);
-                        tableRef.current?.querySelector('tbody tr[data-row]')?.blur();
+                        searchRef.current?.focus();
                       }
                     }}
-                    className={`transition-colors outline-none cursor-pointer
+                    className={`transition-all outline-none cursor-pointer duration-150
                       ${isSelected
-                        ? 'bg-primary-50 ring-1 ring-inset ring-primary-300'
+                        ? 'bg-primary-50/90 ring-2 ring-inset ring-primary-400 shadow-sm'
                         : 'hover:bg-gray-50'
                       }`}
                   >
@@ -432,6 +551,14 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         <button
+                          onClick={(e) => { e.stopPropagation(); onAddToCart?.(product); }}
+                          className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                          title="Add to Cart (C)"
+                          tabIndex={-1}
+                        >
+                          <FaShoppingCart className="w-3.5 h-3.5" />
+                        </button>
+                        <button
                           onClick={(e) => { e.stopPropagation(); onEdit(product); }}
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                           title="Edit (E)"
@@ -448,12 +575,20 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
                           <FaPrint className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={(e) => { e.stopPropagation(); onDelete(product.id); }}
+                          onClick={(e) => { e.stopPropagation(); onDelete(product); }}
                           className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                           title="Delete (D)"
                           tabIndex={-1}
                         >
                           <FaTrash className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSelectedIndex(idx); setActionProduct(product); }}
+                          className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors ml-0.5"
+                          title="More Actions (→ or Enter)"
+                          tabIndex={-1}
+                        >
+                          <FaChevronRight className="w-3 h-3" />
                         </button>
                       </div>
                     </td>
@@ -475,34 +610,40 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
             ref={actionMenuRef}
             tabIndex={0}
             onKeyDown={handleMenuKeyDown}
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 outline-none"
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 outline-none animate-in fade-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="mb-4 pb-3 border-b border-gray-100">
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-0.5">Action for</p>
-              <p className="font-semibold text-gray-900 text-lg leading-snug">{actionProduct.item_name}</p>
-              <p className="text-xs text-primary-600 font-bold">#{actionProduct.id}</p>
-              <code className="text-xs text-gray-500 font-mono">{actionProduct.barcode}</code>
+              <p className="text-xs text-gray-400 uppercase tracking-wider mb-0.5">Select Action</p>
+              <p className="font-semibold text-gray-900 text-lg leading-snug truncate">{actionProduct.item_name}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-xs text-primary-600 font-bold">#{actionProduct.id}</span>
+                <span className="text-xs text-gray-300">•</span>
+                <code className="text-xs text-gray-500 font-mono">{actionProduct.barcode}</code>
+              </div>
             </div>
 
             {/* Options */}
             <div className="space-y-2">
               {ACTION_MENU_OPTIONS.map((opt, i) => {
                 const IconComponent = opt.icon;
+                const isSelected = actionMenuIdx === i;
                 return (
                   <button
                     key={opt.key}
+                    type="button"
+                    onMouseEnter={() => setActionMenuIdx(i)}
                     onClick={() => dispatchAction(opt.key, actionProduct)}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all
-                      ${actionMenuIdx === i
-                        ? `${opt.color} ring-2 ring-offset-1 ring-current scale-[1.01]`
+                      ${isSelected
+                        ? `${opt.color} ring-2 ring-offset-1 ring-current scale-[1.02] shadow-sm`
                         : 'border-gray-200 text-gray-700 hover:bg-gray-50'
                       }`}
                   >
                     <IconComponent className="w-4 h-4 shrink-0" />
-                    <span className="flex-1 text-left">{opt.label}</span>
-                    <kbd className="text-xs px-1.5 py-0.5 bg-white/70 rounded border border-current opacity-60">
+                    <span className="flex-1 text-left font-semibold">{opt.label}</span>
+                    <kbd className="text-xs px-1.5 py-0.5 bg-white/70 rounded border border-current opacity-70 font-mono">
                       {opt.shortcut}
                     </kbd>
                   </button>
@@ -510,10 +651,12 @@ const ProductTable = ({ products, onEdit, onDelete, onPrintBarcode, loading }) =
               })}
             </div>
 
-            <p className="mt-3 text-xs text-gray-400 text-center">
-              <kbd className="px-1 py-0.5 bg-gray-100 rounded">↑↓</kbd> navigate ·{' '}
-              <kbd className="px-1 py-0.5 bg-gray-100 rounded">Enter</kbd> confirm ·{' '}
-              <kbd className="px-1 py-0.5 bg-gray-100 rounded">Esc</kbd> cancel
+            <p className="mt-3.5 text-xs text-gray-400 text-center flex items-center justify-center gap-1.5 flex-wrap">
+              <span><kbd className="px-1 py-0.5 bg-gray-100 rounded">↑↓</kbd> navigate</span>
+              <span>•</span>
+              <span><kbd className="px-1 py-0.5 bg-gray-100 rounded">Enter / →</kbd> confirm</span>
+              <span>•</span>
+              <span><kbd className="px-1 py-0.5 bg-gray-100 rounded">← Esc</kbd> back</span>
             </p>
           </div>
         </div>

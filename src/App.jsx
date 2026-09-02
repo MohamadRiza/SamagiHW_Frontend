@@ -1,5 +1,6 @@
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { CartProvider } from "./contexts/CartContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import React, { useEffect, useState } from "react";
 
@@ -9,7 +10,6 @@ import Dashboard from "./pages/Dashboard";
 import Unauthorized from "./pages/Unauthorized";
 import StockManagement from "./pages/StockManagement";
 import CashBilling from "./pages/CashBilling";
-import CreditBilling from "./pages/CreditBilling";
 import PendingBills from "./pages/PendingBills";
 import PaidBills from "./pages/PaidBills";
 import CustomerList from "./pages/CustomerList";
@@ -176,7 +176,7 @@ function AppContent() {
         <Route path="/reports" element={<ProtectedRoute roles={['admin', 'staff']}><Reports /></ProtectedRoute>} />
         <Route path="/stock" element={<ProtectedRoute roles={["admin", "staff"]}><StockManagement /></ProtectedRoute>} />
         <Route path="/billing/cash" element={<ProtectedRoute roles={["admin", "staff"]}><CashBilling /></ProtectedRoute>} />
-        <Route path="/billing/credit" element={<ProtectedRoute roles={["admin", "staff"]}><CreditBilling /></ProtectedRoute>} />
+        <Route path="/billing/credit" element={<Navigate to="/billing/cash" replace />} />
         <Route path="/customers/list" element={<ProtectedRoute roles={["admin", "staff"]}><CustomerList /></ProtectedRoute>} />
         <Route path="/customers/pending" element={<ProtectedRoute roles={["admin", "staff"]}><PendingBills /></ProtectedRoute>} />
         <Route path="/customers/paid" element={<ProtectedRoute roles={["admin", "staff"]}><PaidBills /></ProtectedRoute>} />
@@ -195,7 +195,9 @@ function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <AppContent />
+        <CartProvider>
+          <AppContent />
+        </CartProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

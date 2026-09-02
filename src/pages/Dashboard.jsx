@@ -252,7 +252,7 @@ const Dashboard = () => {
       
       switch(key) {
         case '1': targetPath = '/billing/cash'; actionName = 'Cash Billing'; break;
-        case '2': targetPath = '/billing/credit'; actionName = 'Credit Bill'; break;
+        case '2': targetPath = '/billing/cash'; actionName = 'Billing'; break;
         case '3': targetPath = '/stock'; actionName = 'Stock Management'; break;
         case '4': targetPath = '/purchases'; actionName = 'Purchases'; break;
         case '5': targetPath = '/billing/pending'; actionName = 'Pending Bills'; break;
@@ -444,7 +444,7 @@ const Dashboard = () => {
 
   // ✅ Quick action handlers
   const handleNewCashBill = () => navigate('/billing/cash');
-  const handleNewCreditBill = () => navigate('/billing/credit');
+  const handleNewCreditBill = () => navigate('/billing/cash');
   const handleAddProduct = () => navigate('/stock');
   const handleViewReports = () => navigate('/reports');
   const handleViewCheques = () => navigate('/cheques');

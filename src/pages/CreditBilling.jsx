@@ -945,15 +945,18 @@ const CreditBilling = () => {
           @page { size: 80mm auto; margin: 4mm; }
           * { box-sizing: border-box; }
           body { 
-            font-family: 'Courier New', Courier, monospace; 
+            font-family: Arial, Helvetica, sans-serif;
             font-size: 11px; 
-            line-height: 1.4;
+            font-weight: 500;
+            line-height: 1.45;
             margin: 0; 
             padding: 2mm; 
             background: #fff; 
             color: #000;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
           }
           .receipt-container {
             width: 100%;
@@ -968,23 +971,24 @@ const CreditBilling = () => {
           }
           .header h2 { 
             margin: 0 0 4px 0; 
-            font-size: 16px; 
-            font-weight: bold; 
+            font-size: 15px; 
+            font-weight: 800; 
             text-transform: uppercase;
             letter-spacing: 1px;
           }
           .header .company-info {
             font-size: 10px;
+            font-weight: 500;
             margin: 2px 0;
             line-height: 1.5;
           }
           .header .bill-type {
             font-size: 11px;
-            font-weight: bold;
+            font-weight: 700;
             margin-top: 4px;
           }
           .credit-label {
-            font-weight: bold;
+            font-weight: 700;
             font-size: 10px;
             border: 1px solid #000;
             padding: 1px 6px;
@@ -992,11 +996,13 @@ const CreditBilling = () => {
           .date-time {
             text-align: right;
             font-size: 9px;
+            font-weight: 500;
             margin-top: 4px;
           }
           .customer-info { 
             margin-bottom: 8px; 
-            font-size: 10px; 
+            font-size: 10px;
+            font-weight: 500;
             border-bottom: 1px solid #000; 
             padding-bottom: 6px; 
           }
@@ -1013,17 +1019,18 @@ const CreditBilling = () => {
             border-bottom: 2px solid #000; 
             padding: 3px 2px; 
             font-size: 10px; 
-            font-weight: bold; 
+            font-weight: 700; 
           }
           td { 
             padding: 3px 2px; 
             font-size: 10px;
+            font-weight: 500;
             color: #000;
           }
           .barcode-sub {
             font-size: 8px;
-            color: #000;
-            opacity: 0.75;
+            font-weight: 400;
+            color: #333;
           }
           .totals { 
             border-top: 2px dashed #000; 
@@ -1034,11 +1041,12 @@ const CreditBilling = () => {
             display: flex; 
             justify-content: space-between; 
             margin: 2px 0; 
-            font-size: 11px; 
+            font-size: 11px;
+            font-weight: 500;
           }
           .grand-total { 
-            font-weight: bold; 
-            font-size: 14px; 
+            font-weight: 800; 
+            font-size: 13px; 
             border-top: 2px solid #000; 
             border-bottom: 2px solid #000;
             padding: 4px 0; 
@@ -1051,15 +1059,26 @@ const CreditBilling = () => {
             padding: 6px; 
             margin-top: 6px; 
             text-align: center; 
-            font-weight: bold; 
+            font-weight: 800; 
             font-size: 12px;
           }
           .footer { 
             text-align: center; 
             margin-top: 10px; 
-            font-size: 9px; 
+            font-size: 9px;
+            font-weight: 500;
             border-top: 2px dashed #000; 
             padding-top: 6px;
+            line-height: 1.7;
+          }
+          .footer p { margin: 2px 0; }
+          .dev-info {
+            margin-top: 6px;
+            border-top: 1px dashed #000;
+            padding-top: 5px;
+            font-size: 8px;
+            font-weight: 400;
+            color: #333;
             line-height: 1.6;
           }
           @media print { 
@@ -1067,6 +1086,7 @@ const CreditBilling = () => {
             body { 
               -webkit-print-color-adjust: exact; 
               print-color-adjust: exact;
+              -webkit-font-smoothing: antialiased;
             }
             .receipt-container {
               max-width: 100% !important;
@@ -1112,7 +1132,7 @@ const CreditBilling = () => {
                   <td style="text-align:center">${it.quantity || 1}</td>
                   <td style="text-align:right">${(it.unit_price || 0).toFixed(2)}</td>
                   <td style="text-align:right">${(it.discount_lkr || 0) > 0 ? '-' + ((it.discount_lkr * it.quantity) || 0).toFixed(2) : '-'}</td>
-                  <td style="text-align:right;font-weight:bold">${(((it.unit_price || 0) * (it.quantity || 1)) - ((it.discount_lkr || 0) * (it.quantity || 1))).toFixed(2)}</td>
+                  <td style="text-align:right;font-weight:700">${(((it.unit_price || 0) * (it.quantity || 1)) - ((it.discount_lkr || 0) * (it.quantity || 1))).toFixed(2)}</td>
                 </tr>
               `).join('') : ''}
             </tbody>
@@ -1128,8 +1148,13 @@ const CreditBilling = () => {
           <div class="footer">
             <p>Thank you for your business!</p>
             <p>Please settle by due date</p>
+            <p><strong>Goods can be returned within 7 days</strong></p>
             <p>Cashier: ${bill.cashier || 'N/A'}</p>
             <p>TP: 077 779 7410 | Madagalle Road, Kubukgate</p>
+            <div class="dev-info">
+              <div>Developed with precision by <strong>Nexasoft</strong></div>
+              <div>Contact: 0787979131</div>
+            </div>
           </div>
         </div>
         <script>

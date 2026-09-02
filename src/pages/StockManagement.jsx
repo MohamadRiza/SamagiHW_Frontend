@@ -1,20 +1,27 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useCart } from '../contexts/CartContext';
 import { Sidebar } from '../components/layout';
 import ProductService from '../services/product.service';
 import ProductForm from '../components/stock/ProductForm';
 import ProductTable from '../components/stock/ProductTable';
+import ProductConfirmationModal from '../components/common/ProductConfirmationModal';
+import ConfirmationModal from '../components/common/ConfirmationModal';
 import { Toaster, toast } from 'react-hot-toast';
 import JsBarcode from 'jsbarcode';
 import { FaPlus, FaEdit, FaExclamationTriangle } from 'react-icons/fa';
 
 const StockManagement = () => {
   const { isAdmin } = useAuth();
+  const { addToCart } = useCart();
   const [products, setProducts]             = useState([]);
   const [loading, setLoading]               = useState(true);
   const [formLoading, setFormLoading]       = useState(false);
   const [showForm, setShowForm]             = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [cartModalProduct, setCartModalProduct] = useState(null);
+  const [productToDelete, setProductToDelete]   = useState(null);
+  const [deleteLoading, setDeleteLoading]       = useState(false);
   const modalRef = useRef(null);
 
   // ── Fetch ──────────────────────────────────────────────────────────────
@@ -81,19 +88,53 @@ const StockManagement = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this product?')) return;
+  const handleDeleteRequest = useCallback((product) => {
+    if (!product) return;
+    setProductToDelete(product);
+  }, []);
+
+  const handleConfirmDelete = async () => {
+    if (!productToDelete?.id) return;
     try {
-      const response = await ProductService.delete(id);
+      setDeleteLoading(true);
+      const response = await ProductService.delete(productToDelete.id);
       if (response.success) {
-        toast.success('Product deleted');
+        toast.success(`✓ "${productToDelete.item_name || 'Product'}" deleted`);
         fetchProducts();
+      } else {
+        toast.error(response.error || 'Failed to delete product');
       }
     } catch (error) {
       toast.error('Failed to delete product');
       console.error('Delete error:', error);
+    } finally {
+      setDeleteLoading(false);
+      setProductToDelete(null);
+      // Ensure Electron window focus is fully restored and immediate
+      setTimeout(() => {
+        try { window.focus(); } catch (e) {}
+      }, 50);
     }
   };
+
+  // ── Add to Cart ────────────────────────────────────────────────────────
+  const handleAddToCart = useCallback((product) => {
+    if (!product) return;
+    if (product.stock_quantity <= 0) {
+      toast.error(`⚠️ "${product.item_name}" is out of stock`);
+      return;
+    }
+    setCartModalProduct(product);
+  }, []);
+
+  const handleConfirmAddToCart = useCallback((modalData) => {
+    if (!cartModalProduct) return;
+    const ok = addToCart(cartModalProduct, modalData);
+    if (ok) {
+      toast.success(`✓ Added to Cart: ${cartModalProduct.item_name} × ${modalData.quantity}`);
+    }
+    setCartModalProduct(null);
+  }, [cartModalProduct, addToCart]);
 
   // ── Barcode Print ──────────────────────────────────────────────────────
   // Shows REAL selling_price on label (not discounted), uses sub_brands,
@@ -387,8 +428,9 @@ const StockManagement = () => {
               setEditingProduct(product);
               setShowForm(true);
             }}
-            onDelete={canEdit ? handleDelete : undefined}
+            onDelete={canEdit ? handleDeleteRequest : undefined}
             onPrintBarcode={handlePrintBarcode}
+            onAddToCart={handleAddToCart}
             loading={loading}
           />
 
@@ -468,6 +510,33 @@ const StockManagement = () => {
           </div>
         </div>
       )}
+      {/* ── Add to Cart Confirmation Modal ───────────────────────── */}
+      <ProductConfirmationModal
+        product={cartModalProduct}
+        isOpen={Boolean(cartModalProduct)}
+        onClose={() => setCartModalProduct(null)}
+        onConfirm={handleConfirmAddToCart}
+      />
+
+      {/* ── Delete Confirmation Modal ────────────────────────────── */}
+      <ConfirmationModal
+        isOpen={Boolean(productToDelete)}
+        onClose={() => {
+          setProductToDelete(null);
+          setTimeout(() => {
+            try { window.focus(); } catch (e) {}
+          }, 50);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Delete Product"
+        message="Are you sure you want to delete this product? All corresponding stock records and barcodes will be permanently removed. This action cannot be undone."
+        itemName={productToDelete?.item_name}
+        itemId={productToDelete?.id}
+        confirmText="Delete Product"
+        cancelText="Cancel"
+        confirmVariant="danger"
+        loading={deleteLoading}
+      />
     </div>
   );
 };

@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useCart } from '../contexts/CartContext';
 import { Sidebar } from '../components/layout';
 import ProductService from '../services/product.service';
 import BillService from '../services/bill.service';
 import CustomerService from '../services/customer.service';
 import CreditBillService from '../services/creditBill.service';
+import ProductConfirmationModal from '../components/common/ProductConfirmationModal';
+import ConfirmationModal from '../components/common/ConfirmationModal';
 import { Toaster, toast } from 'react-hot-toast';
 import { 
   FaPlus, 
@@ -15,11 +18,11 @@ import {
   FaUser, 
   FaBuilding, 
   FaSearch, 
-  FaExclamationTriangle,
-  FaCheck,
-  FaBoxOpen,
-  FaPercentage,
-  FaMoneyCheckAlt
+  FaExclamationTriangle, 
+  FaCheck, 
+  FaBoxOpen, 
+  FaPercentage, 
+  FaMoneyCheckAlt 
 } from 'react-icons/fa';
 
 // 🔊 Professional scan sound
@@ -37,363 +40,6 @@ const playScanSound = () => {
     oscillator.start();
     oscillator.stop(audioCtx.currentTime + 0.1);
   } catch (e) {}
-};
-
-// 🎨 Product Confirmation Modal Component - FULL KEYBOARD NAVIGATION
-const ProductConfirmationModal = ({ product, isOpen, onClose, onConfirm, formatLKR }) => {
-  const [quantity, setQuantity] = useState(1);
-  const [discountMode, setDiscountMode] = useState('default');
-  const [discountValue, setDiscountValue] = useState(0);
-  const [discountLKR, setDiscountLKR] = useState(0);
-  const [focusedField, setFocusedField] = useState('quantity');
-  
-  const modalRef = useRef(null);
-  const qtyInputRef = useRef(null);
-  const discountInputRef = useRef(null);
-
-  const unitPrice = product?.selling_price || 0;
-  const maxStock = product?.stock_quantity || 0;
-  const autoDiscount = product?.discount_type === 'percent'
-    ? unitPrice * (product.discount_value || 0) / 100
-    : product?.discount_value || 0;
-
-  useEffect(() => {
-    if (isOpen) {
-      setQuantity(1);
-      setDiscountMode('default');
-      setDiscountValue(product?.discount_value || 0);
-      setDiscountLKR(autoDiscount);
-      setFocusedField('quantity');
-      
-      setTimeout(() => {
-        qtyInputRef.current?.focus();
-        qtyInputRef.current?.select();
-      }, 50);
-    }
-  }, [isOpen, product, autoDiscount]);
-
-  useEffect(() => {
-    if (discountMode === 'default') {
-      setDiscountLKR(autoDiscount);
-      setDiscountValue(product?.discount_value || 0);
-    } else if (discountMode === 'percent') {
-      const val = Math.min(100, Math.max(0, discountValue));
-      setDiscountLKR(unitPrice * val / 100);
-    } else if (discountMode === 'fixed') {
-      const val = Math.min(unitPrice, Math.max(0, discountValue));
-      setDiscountLKR(val);
-    }
-  }, [discountMode, discountValue, unitPrice, autoDiscount, product]);
-
-  const handleQuantityChange = (val) => {
-    const qty = parseInt(val) || 1;
-    setQuantity(Math.min(Math.max(1, qty), maxStock));
-  };
-
-  const handleDiscountValueChange = (val) => {
-    const num = parseFloat(val) || 0;
-    if (discountMode === 'percent') {
-      setDiscountValue(Math.min(100, Math.max(0, num)));
-    } else {
-      setDiscountValue(Math.min(unitPrice, Math.max(0, num)));
-    }
-  };
-
-  const handleConfirm = () => {
-    if (quantity > maxStock) {
-      toast.error(`⚠️ Max stock: ${maxStock}`);
-      return;
-    }
-    
-    onConfirm({
-      quantity,
-      discountMode,
-      discountValue: discountMode === 'default' ? (product?.discount_value || 0) : discountValue,
-      discountType: discountMode === 'default' ? (product?.discount_type || 'fixed') : discountMode,
-      discountLKR: discountMode === 'default' ? autoDiscount : discountLKR
-    });
-    onClose();
-  };
-
-  const handleKeyDown = (e) => {
-    if (focusedField === 'quantity') {
-      if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        handleQuantityChange(quantity + 1);
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        handleQuantityChange(quantity - 1);
-      } else if (e.key === 'Enter' || e.key === 'Tab') {
-        e.preventDefault();
-        setFocusedField('discountMode');
-      }
-    }
-    
-    if (focusedField === 'discountMode') {
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        e.preventDefault();
-        const modes = ['default', 'percent', 'fixed'];
-        const currentIndex = modes.indexOf(discountMode);
-        const direction = e.key === 'ArrowDown' ? 1 : -1;
-        const newIndex = (currentIndex + direction + modes.length) % modes.length;
-        setDiscountMode(modes[newIndex]);
-      } else if (e.key === 'Enter' || e.key === 'Tab') {
-        e.preventDefault();
-        if (discountMode === 'default') {
-          handleConfirm();
-        } else {
-          setFocusedField('discountValue');
-          setTimeout(() => {
-            discountInputRef.current?.focus();
-            discountInputRef.current?.select();
-          }, 10);
-        }
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        setFocusedField('quantity');
-        qtyInputRef.current?.focus();
-      }
-    }
-    
-    if (focusedField === 'discountValue' && discountMode !== 'default') {
-      if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        const increment = discountMode === 'percent' ? 1 : 1;
-        handleDiscountValueChange(discountValue + increment);
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        const decrement = discountMode === 'percent' ? 1 : 1;
-        handleDiscountValueChange(discountValue - decrement);
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        handleConfirm();
-      } else if (e.key === 'Escape' || e.key === 'Tab') {
-        e.preventDefault();
-        setFocusedField('discountMode');
-      }
-    }
-    
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      onClose();
-    }
-  };
-
-  useEffect(() => {
-    if (focusedField === 'quantity') {
-      qtyInputRef.current?.focus();
-      qtyInputRef.current?.select();
-    } else if (focusedField === 'discountValue' && discountMode !== 'default') {
-      discountInputRef.current?.focus();
-      discountInputRef.current?.select();
-    }
-  }, [focusedField, discountMode]);
-
-  if (!isOpen || !product) return null;
-
-  const itemTotal = unitPrice * quantity;
-  const totalDiscount = discountLKR * quantity;
-  const finalTotal = itemTotal - totalDiscount;
-
-  return (
-    <div 
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" 
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="product-modal-title"
-    >
-      <div 
-        ref={modalRef}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl border border-gray-200 overflow-hidden animate-in fade-in zoom-in duration-200 outline-none"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={handleKeyDown}
-        tabIndex={-1}
-      >
-        {/* Modal Header */}
-        <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-5 py-3 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white text-base">
-              <FaBoxOpen />
-            </div>
-            <div>
-              <h3 id="product-modal-title" className="text-base font-bold text-white">Add to Cart</h3>
-              <p className="text-[11px] text-white/80">Use ↑↓ to adjust, Enter to confirm</p>
-            </div>
-          </div>
-          <button 
-            onClick={onClose}
-            className="w-7 h-7 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
-            aria-label="Close modal"
-          >
-            <FaTimes />
-          </button>
-        </div>
-
-        {/* Modal Body */}
-        <div className="p-4 space-y-3 overflow-y-auto max-h-[75vh]">
-          {/* Product Info */}
-          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center text-primary-700 font-bold text-xl flex-shrink-0 shadow-sm">
-              {(product?.item_name || '?').charAt(0).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="font-bold text-gray-900 text-base truncate">{product?.item_name || 'N/A'}</h4>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-xs text-gray-500 font-mono bg-gray-100 px-1.5 py-0.5 rounded">
-                  {product?.barcode || 'No barcode'}
-                </span>
-                {product?.short_form && (
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary-100 text-primary-700 border border-primary-200">
-                    {product.short_form}
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-xl font-black text-primary-700">{formatLKR(unitPrice)}</p>
-              <p className={`text-[11px] font-medium ${maxStock <= 10 ? 'text-red-600' : 'text-green-600'}`}>
-                Stock: {maxStock}
-              </p>
-            </div>
-          </div>
-
-          {/* 2-Column Grid for Quantity & Discount */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Quantity Selector */}
-            <div className={`p-3 rounded-xl border-2 transition-all ${focusedField === 'quantity' ? 'border-primary-500 bg-primary-50/30 ring-2 ring-primary-200' : 'border-gray-200 bg-gray-50'}`}>
-              <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
-                <span>Quantity</span>
-                {focusedField === 'quantity' && <span className="text-[10px] text-primary-600 font-normal">Active (↑↓)</span>}
-              </label>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleQuantityChange(quantity - 1)}
-                  className="w-9 h-9 rounded-lg border border-gray-300 hover:border-primary-500 hover:bg-primary-50 flex items-center justify-center text-lg font-bold text-gray-700 transition-colors disabled:opacity-50"
-                  disabled={quantity <= 1}
-                  aria-label="Decrease quantity"
-                >
-                  −
-                </button>
-                <input
-                  ref={qtyInputRef}
-                  type="number"
-                  min="1"
-                  max={maxStock}
-                  value={quantity}
-                  onChange={(e) => handleQuantityChange(e.target.value)}
-                  onFocus={() => setFocusedField('quantity')}
-                  className="flex-1 text-center text-lg font-bold border border-gray-300 rounded-lg py-1 focus:ring-2 focus:ring-primary-500 outline-none"
-                  aria-label="Quantity input"
-                />
-                <button
-                  type="button"
-                  onClick={() => handleQuantityChange(quantity + 1)}
-                  className="w-9 h-9 rounded-lg border border-gray-300 hover:border-primary-500 hover:bg-primary-50 flex items-center justify-center text-lg font-bold text-gray-700 transition-colors disabled:opacity-50"
-                  disabled={quantity >= maxStock}
-                  aria-label="Increase quantity"
-                >
-                  +
-                </button>
-              </div>
-              <p className="text-[10px] text-gray-400 mt-1">Max: {maxStock} • Press Enter →</p>
-            </div>
-
-            {/* Discount Controls */}
-            <div className={`p-3 rounded-xl border-2 transition-all ${focusedField === 'discountMode' || focusedField === 'discountValue' ? 'border-primary-500 bg-primary-50/30 ring-2 ring-primary-200' : 'border-gray-200 bg-gray-50'}`}>
-              <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
-                <span>Discount</span>
-                {(focusedField === 'discountMode' || focusedField === 'discountValue') && <span className="text-[10px] text-primary-600 font-normal">Active</span>}
-              </label>
-              <div className="space-y-2">
-                <select
-                  value={discountMode}
-                  onChange={(e) => {
-                    setDiscountMode(e.target.value);
-                    if (e.target.value === 'default') {
-                      handleConfirm();
-                    } else {
-                      setFocusedField('discountValue');
-                    }
-                  }}
-                  onFocus={() => setFocusedField('discountMode')}
-                  className={`w-full text-xs border rounded-lg py-1.5 px-2 bg-white focus:ring-2 focus:ring-primary-500 font-medium outline-none ${
-                    focusedField === 'discountMode' ? 'border-primary-500 ring-2 ring-primary-200' : 'border-gray-300'
-                  }`}
-                  aria-label="Discount mode selection"
-                >
-                  <option value="default">Auto Discount ({product?.discount_value}{product?.discount_type === 'percent' ? '%' : ''})</option>
-                  <option value="percent">Manual Percentage (%)</option>
-                  <option value="fixed">Manual Amount (LKR)</option>
-                </select>
-                
-                {discountMode !== 'default' && (
-                  <div className="relative">
-                    <input
-                      ref={discountInputRef}
-                      type="number"
-                      min="0"
-                      step={discountMode === 'percent' ? "1" : "0.01"}
-                      max={discountMode === 'percent' ? "100" : unitPrice}
-                      value={discountValue}
-                      onChange={(e) => handleDiscountValueChange(e.target.value)}
-                      onFocus={() => setFocusedField('discountValue')}
-                      className={`w-full text-right text-xs border rounded-lg py-1.5 px-2 pr-10 font-medium focus:ring-2 focus:ring-primary-500 outline-none ${
-                        focusedField === 'discountValue' ? 'border-primary-500 ring-2 ring-primary-200' : 'border-gray-300'
-                      }`}
-                      placeholder={discountMode === 'percent' ? 'Enter %' : 'Enter LKR'}
-                      aria-label={`Discount ${discountMode === 'percent' ? 'percentage' : 'amount'} input`}
-                    />
-                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">
-                      {discountMode === 'percent' ? '%' : 'LKR'}
-                    </span>
-                  </div>
-                )}
-              </div>
-              {discountLKR > 0 && (
-                <p className="text-[10px] text-green-700 font-semibold mt-1">Per item: {formatLKR(discountLKR)}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Price Summary Bar */}
-          <div className="p-3 bg-gradient-to-r from-gray-50 to-primary-50/20 rounded-xl border border-gray-200 flex items-center justify-between">
-            <div className="text-xs">
-              <span className="text-gray-500 font-medium">Subtotal ({quantity} × {formatLKR(unitPrice)}): </span>
-              <span className="font-semibold text-gray-800">{formatLKR(itemTotal)}</span>
-              {totalDiscount > 0 && (
-                <span className="ml-2 text-green-600 font-medium">(- {formatLKR(totalDiscount)})</span>
-              )}
-            </div>
-            <div className="text-right">
-              <span className="text-xs font-bold text-gray-500 mr-2">Total:</span>
-              <span className="text-xl font-black text-primary-700">{formatLKR(finalTotal)}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Modal Footer */}
-        <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 flex gap-3 flex-shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 py-2.5 px-4 border border-gray-300 hover:border-gray-400 text-gray-700 text-sm font-bold rounded-xl transition-all hover:bg-gray-100"
-          >
-            Cancel (ESC)
-          </button>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={quantity > maxStock}
-            className="flex-1 py-2.5 px-4 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white text-sm font-bold rounded-xl transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            <FaCheck /> Add to Cart (Enter)
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 };
 
 // 🎨 Custom Item Confirmation Modal Component
@@ -1396,7 +1042,7 @@ const CashBilling = () => {
   const [dueDate, setDueDate] = useState('');
   const [creditNotes, setCreditNotes] = useState('');
   
-  const [cart, setCart] = useState([]);
+  const { cart, setCart, addToCart } = useCart();
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -1409,6 +1055,7 @@ const CashBilling = () => {
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [pendingProduct, setPendingProduct] = useState(null);
   const [showCreditModal, setShowCreditModal] = useState(false);
+  const [showClearCartModal, setShowClearCartModal] = useState(false);
   
   const [selectedCartItemIndex, setSelectedCartItemIndex] = useState(-1);
   
@@ -1570,21 +1217,13 @@ const CashBilling = () => {
             cartItemRefs.current[next]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
             return next;
           });
-        } else if (e.key === 'Backspace' && selectedCartItemIndex >= 0) {
+        } else if ((e.key === 'Backspace' || e.key === 'Delete') && selectedCartItemIndex >= 0) {
           e.preventDefault();
           const item = cart[selectedCartItemIndex];
-          if (item?.product_id && window.confirm(`🗑️ Remove "${item.product_name}" from cart?`)) {
+          if (item?.product_id) {
             removeFromCart(item.product_id);
             setSelectedCartItemIndex(prev => Math.max(0, prev - 1));
-            toast.success('✓ Item removed');
-          }
-        } else if (e.key === 'Delete' && selectedCartItemIndex >= 0) {
-          e.preventDefault();
-          const item = cart[selectedCartItemIndex];
-          if (item?.product_id && window.confirm(`🗑️ Remove "${item.product_name}" from cart?`)) {
-            removeFromCart(item.product_id);
-            setSelectedCartItemIndex(prev => Math.max(0, prev - 1));
-            toast.success('✓ Item removed');
+            toast.success(`✓ Removed "${item.product_name}"`);
           }
         }
       }
@@ -1928,13 +1567,20 @@ const CashBilling = () => {
 
   const clearCart = () => {
     if (!Array.isArray(cart) || cart.length === 0) return;
-    if (window.confirm('🗑️ Clear all items from cart?')) {
-      setCart([]);
-      setPaymentMethod(null);
-      setSelectedCustomer(null);
-      setSelectedCartItemIndex(-1);
-      toast.success('Cart cleared');
-    }
+    setShowClearCartModal(true);
+  };
+
+  const handleConfirmClearCart = () => {
+    setCart([]);
+    setPaymentMethod(null);
+    setSelectedCustomer(null);
+    setSelectedCartItemIndex(-1);
+    setShowClearCartModal(false);
+    toast.success('Cart cleared');
+    setTimeout(() => {
+      try { window.focus(); } catch (e) {}
+      searchInputRef.current?.focus();
+    }, 50);
   };
 
   const handleCreateCustomer = async () => {
@@ -1990,15 +1636,18 @@ const CashBilling = () => {
         @page { size: 80mm auto; margin: 4mm; }
         * { box-sizing: border-box; }
         body { 
-          font-family: 'Courier New', Courier, monospace; 
+          font-family: Arial, Helvetica, sans-serif;
           font-size: 11px; 
-          line-height: 1.4;
+          font-weight: 500;
+          line-height: 1.45;
           margin: 0; 
           padding: 2mm; 
           background: #fff; 
           color: #000;
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
+          -webkit-font-smoothing: antialiased;
+          text-rendering: optimizeLegibility;
         }
         .receipt-container {
           width: 100%;
@@ -2013,32 +1662,35 @@ const CashBilling = () => {
         }
         .header h2 { 
           margin: 0 0 4px 0; 
-          font-size: 16px; 
-          font-weight: bold; 
+          font-size: 15px; 
+          font-weight: 800; 
           text-transform: uppercase;
           letter-spacing: 1px;
         }
         .header .company-info {
           font-size: 10px;
+          font-weight: 500;
           margin: 2px 0;
           line-height: 1.5;
         }
         .header .bill-type {
           font-size: 11px;
-          font-weight: bold;
+          font-weight: 700;
           margin-top: 4px;
           text-transform: uppercase;
         }
         .date-time {
           text-align: right;
           font-size: 9px;
+          font-weight: 500;
           margin-top: 4px;
         }
         .bill-info { 
           display: flex; 
           justify-content: space-between; 
           margin-bottom: 6px; 
-          font-size: 10px; 
+          font-size: 10px;
+          font-weight: 600;
           border-bottom: 1px solid #000; 
           padding-bottom: 4px; 
         }
@@ -2052,18 +1704,19 @@ const CashBilling = () => {
           border-bottom: 2px solid #000; 
           padding: 3px 2px; 
           font-size: 10px; 
-          font-weight: bold; 
+          font-weight: 700; 
         }
         td { 
           padding: 3px 2px; 
-          font-size: 10px; 
+          font-size: 10px;
+          font-weight: 500;
           vertical-align: top; 
           color: #000;
         }
         .barcode-sub {
           font-size: 8px;
-          color: #000;
-          opacity: 0.75;
+          font-weight: 400;
+          color: #333;
         }
         .totals { 
           border-top: 2px dashed #000; 
@@ -2074,17 +1727,19 @@ const CashBilling = () => {
           display: flex; 
           justify-content: space-between; 
           margin: 2px 0; 
-          font-size: 11px; 
+          font-size: 11px;
+          font-weight: 500;
         }
         .totals .disc-row {
           display: flex;
           justify-content: space-between;
           margin: 2px 0;
           font-size: 11px;
+          font-weight: 500;
         }
         .grand-total { 
-          font-weight: bold; 
-          font-size: 14px; 
+          font-weight: 800; 
+          font-size: 13px; 
           border-top: 2px solid #000; 
           border-bottom: 2px solid #000;
           padding: 4px 0; 
@@ -2096,7 +1751,7 @@ const CashBilling = () => {
           text-align: center; 
           margin: 8px 0; 
           padding: 5px 4px; 
-          font-weight: bold; 
+          font-weight: 700; 
           border: 2px solid #000;
           font-size: 11px;
           letter-spacing: 0.5px;
@@ -2104,13 +1759,25 @@ const CashBilling = () => {
         .footer { 
           text-align: center; 
           margin-top: 10px; 
-          font-size: 9px; 
+          font-size: 9px;
+          font-weight: 500;
           border-top: 2px dashed #000; 
           padding-top: 6px; 
+          line-height: 1.7;
+        }
+        .footer p { margin: 2px 0; }
+        .dev-info {
+          margin-top: 6px;
+          border-top: 1px dashed #000;
+          padding-top: 5px;
+          font-size: 8px;
+          font-weight: 400;
+          color: #333;
           line-height: 1.6;
         }
         .audit { 
           font-size: 8px; 
+          font-weight: 400;
           color: #000;
           margin-top: 8px; 
           text-align: center; 
@@ -2122,6 +1789,7 @@ const CashBilling = () => {
           body { 
             -webkit-print-color-adjust: exact; 
             print-color-adjust: exact;
+            -webkit-font-smoothing: antialiased;
           }
           .receipt-container {
             max-width: 100% !important;
@@ -2163,7 +1831,7 @@ const CashBilling = () => {
                 <td style="text-align:center">${item.quantity}</td>
                 <td style="text-align:right">${(item.unit_price || 0).toFixed(2)}</td>
                 <td style="text-align:right">${(item.discount_lkr || 0) > 0 ? '-' + ((item.discount_lkr * item.quantity) || 0).toFixed(2) : '-'}</td>
-                <td style="text-align:right;font-weight:bold">${(((item.unit_price || 0) * (item.quantity || 1)) - ((item.discount_lkr || 0) * (item.quantity || 1))).toFixed(2)}</td>
+                <td style="text-align:right;font-weight:700">${(((item.unit_price || 0) * (item.quantity || 1)) - ((item.discount_lkr || 0) * (item.quantity || 1))).toFixed(2)}</td>
               </tr>
             `).join('') : ''}
           </tbody>
@@ -2176,8 +1844,12 @@ const CashBilling = () => {
         </div>
         <div class="footer">
           <p>Thank you for shopping with us!</p>
-          <p>Goods once sold cannot be returned</p>
+          <p><strong>Goods can be returned within 7 days</strong></p>
           <p>TP: 077 779 7410 | Madagalle Road, Kubukgate</p>
+          <div class="dev-info">
+            <div>Developed with precision by <strong>Nexasoft</strong></div>
+            <div>Contact: 0787979131</div>
+          </div>
         </div>
         <div class="audit">
           Audit: ${billData.billNumber} | ${new Date().toISOString()} | Cashier: ${billData.cashier}
@@ -2205,15 +1877,18 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
         @page { size: 80mm auto; margin: 4mm; }
         * { box-sizing: border-box; }
         body { 
-          font-family: 'Courier New', Courier, monospace; 
+          font-family: Arial, Helvetica, sans-serif;
           font-size: 11px;
-          line-height: 1.4;
+          font-weight: 500;
+          line-height: 1.45;
           margin: 0; 
           padding: 2mm; 
           background: #fff; 
           color: #000;
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
+          -webkit-font-smoothing: antialiased;
+          text-rendering: optimizeLegibility;
         }
         .receipt-container {
           width: 100%;
@@ -2228,29 +1903,32 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
         }
         .header h2 { 
           margin: 0 0 4px 0; 
-          font-size: 16px; 
-          font-weight: bold; 
+          font-size: 15px; 
+          font-weight: 800; 
           text-transform: uppercase;
           letter-spacing: 1px;
         }
         .header .company-info {
           font-size: 10px;
+          font-weight: 500;
           margin: 2px 0;
           line-height: 1.5;
         }
         .header .bill-type {
           font-size: 11px;
-          font-weight: bold;
+          font-weight: 700;
           margin-top: 4px;
         }
         .date-time {
           text-align: right;
           font-size: 9px;
+          font-weight: 500;
           margin-top: 4px;
         }
         .customer-info { 
           margin-bottom: 8px; 
-          font-size: 10px; 
+          font-size: 10px;
+          font-weight: 500;
           border-bottom: 1px solid #000; 
           padding-bottom: 6px; 
         }
@@ -2267,17 +1945,18 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
           border-bottom: 2px solid #000; 
           padding: 3px 2px; 
           font-size: 10px; 
-          font-weight: bold; 
+          font-weight: 700; 
         }
         td { 
           padding: 3px 2px; 
           font-size: 10px;
+          font-weight: 500;
           color: #000;
         }
         .barcode-sub {
           font-size: 8px;
-          color: #000;
-          opacity: 0.75;
+          font-weight: 400;
+          color: #333;
         }
         .totals { 
           border-top: 2px dashed #000; 
@@ -2288,11 +1967,12 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
           display: flex; 
           justify-content: space-between; 
           margin: 2px 0; 
-          font-size: 11px; 
+          font-size: 11px;
+          font-weight: 500;
         }
         .grand-total { 
-          font-weight: bold; 
-          font-size: 14px; 
+          font-weight: 800; 
+          font-size: 13px; 
           border-top: 2px solid #000; 
           border-bottom: 2px solid #000;
           padding: 4px 0; 
@@ -2305,11 +1985,11 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
           padding: 6px; 
           margin-top: 6px; 
           text-align: center; 
-          font-weight: bold; 
+          font-weight: 800; 
           font-size: 12px;
         }
         .credit-label {
-          font-weight: bold;
+          font-weight: 700;
           font-size: 10px;
           border: 1px solid #000;
           padding: 1px 6px;
@@ -2317,9 +1997,20 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
         .footer { 
           text-align: center; 
           margin-top: 10px; 
-          font-size: 9px; 
+          font-size: 9px;
+          font-weight: 500;
           border-top: 2px dashed #000; 
           padding-top: 6px;
+          line-height: 1.7;
+        }
+        .footer p { margin: 2px 0; }
+        .dev-info {
+          margin-top: 6px;
+          border-top: 1px dashed #000;
+          padding-top: 5px;
+          font-size: 8px;
+          font-weight: 400;
+          color: #333;
           line-height: 1.6;
         }
         @media print { 
@@ -2327,6 +2018,7 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
           body { 
             -webkit-print-color-adjust: exact; 
             print-color-adjust: exact;
+            -webkit-font-smoothing: antialiased;
           }
           .receipt-container {
             max-width: 100% !important;
@@ -2372,7 +2064,7 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
                 <td style="text-align:center">${item.quantity || 1}</td>
                 <td style="text-align:right">${(item.unit_price || 0).toFixed(2)}</td>
                 <td style="text-align:right">${(item.discount_lkr || 0) > 0 ? '-' + ((item.discount_lkr * item.quantity) || 0).toFixed(2) : '-'}</td>
-                <td style="text-align:right;font-weight:bold">${(((item.unit_price || 0) * (item.quantity || 1)) - ((item.discount_lkr || 0) * (item.quantity || 1))).toFixed(2)}</td>
+                <td style="text-align:right;font-weight:700">${(((item.unit_price || 0) * (item.quantity || 1)) - ((item.discount_lkr || 0) * (item.quantity || 1))).toFixed(2)}</td>
               </tr>
             `).join('') : ''}
           </tbody>
@@ -2388,7 +2080,18 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
         <div class="footer">
           <p>Thank you for your business!</p>
           <p>Please settle the bill by the due date</p>
+          <p><strong>Goods can be returned within 7 days</strong></p>
           <p>Cashier: ${billData.cashier || 'N/A'}</p>
+          <p>TP: 077 779 7410 | Madagalle Road, Kubukgate</p>
+          <div class="dev-info">
+            <div>Developed with precision by <strong>Nexasoft</strong></div>
+            <div>Contact: 0787979131</div>
+          </div>
+        </div>
+      </div>
+      <script>
+        window.onload = () => { setTimeout(() => window.print(), 300); };
+      <\/script>
     </body>
     </html>
   `);
@@ -2517,6 +2220,23 @@ const openCreditReceiptPrint = (billData, cartItems, customer) => {
         onConfirm={processCheckout}
         customers={customers}
         formatLKR={formatLKR}
+      />
+
+      <ConfirmationModal
+        isOpen={showClearCartModal}
+        onClose={() => {
+          setShowClearCartModal(false);
+          setTimeout(() => {
+            try { window.focus(); } catch (e) {}
+            searchInputRef.current?.focus();
+          }, 50);
+        }}
+        onConfirm={handleConfirmClearCart}
+        title="Clear Cart"
+        message="Are you sure you want to remove all items from the current cart?"
+        confirmText="Clear All Items"
+        cancelText="Keep Items"
+        confirmVariant="danger"
       />
       
       <main className="flex-1 flex flex-col">
